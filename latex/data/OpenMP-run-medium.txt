@@ -1,0 +1,11 @@
+cat ../Data/Medium/input.data ../Data/Medium/output.data | ./runproject 2> Debug.txt
+
+// Running Open MP CPU Project Program
+// OUTER=32, NUM_X=47, NUM_Y=181, NUM_T=93.
+1		// VALID   Result,
+235295		// Runtime in microseconds,
+32		// CPU Threads,
+
+
+ [ 0.030000 , 0.029000 , 0.028321 , 0.027909 , 0.027497 , 0.027085 , 0.026673 , 0.026261 , 0.025872 , 0.025488 , 0.025104 , 0.024720 , 0.024336 , 0.023956 , 0.023601 , 0.023246 , 0.022891 , 0.022537 , 0.022182 , 0.021839 , 0.021512 , 0.021185 , 0.020858 , 0.020531 , 0.020204 , 0.019896 , 0.019596 , 0.019295 , 0.018995 , 0.018694 , 0.018394 , 0.018118  ]	//PMPH Project Result
+

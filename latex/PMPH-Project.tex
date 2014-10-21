@@ -1,0 +1,57 @@
+\documentclass[11pt]{article}
+
+%---- defitions ----
+\def\Title{Programming Massively Parallel Hardware\\
+\vspace{1.5cm}
+\textbf{Group Project}}
+\def\Author{Esben Skaarup, Asbj\o rn Thegler \& \'{A}sbj\o rn Vider\o \ J\o kladal}
+
+%---- packages ----
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{courier}
+\usepackage{listings}
+
+\begin{document}
+\title{\Title}
+\author{\Author}
+\date{\today}
+\maketitle
+
+\section{Sequential Implementation}
+\subsection{Timing}
+\subsection{Validation}
+
+\section{OpenMP Implementation}
+
+\subsection{Privatization}
+\subsection{Validation}
+\subsection{Speedup}
+
+\section{CUDA Implementation}
+
+\subsection{Transformations}
+\subsection{Validation}
+\subsection{Speedup}
+
+\newpage
+\section{Appendices}
+\subsection{Example output}
+Here follows example output from running the different implementations.
+
+\subsection{Original implementation, small dataset}
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/orig-run-small.txt}
+\subsection{OpenMP implementation, small dataset}
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/OpenMP-run-small.txt}
+\subsection{Original implementation, medium dataset}
+
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/orig-run-medium.txt}
+\subsection{OpenMP implementation, medium dataset}
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/OpenMP-run-medium.txt}
+\subsection{Original implementation, large dataset}
+
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/orig-run-large.txt}
+\subsection{OpenMP implementation, large dataset}
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/OpenMP-run-large.txt}
+
+\end{document}

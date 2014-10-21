@@ -179,11 +179,12 @@ void run_OrigCPU(
 		const REAL &beta,
 		REAL *res // [outer] RESULT
 ) {
-	REAL strike;
-	PrivGlobs globs(numX, numY, numT);
 	
+	#pragma omp parallel for default(shared) schedule(static) if(outer>4)
 	for(unsigned i = 0; i < outer; ++i) {
-		strike = 0.001*i;
+		REAL strike = 0.001*i;;
+		PrivGlobs globs(numX, numY, numT);
+		
 		res[i] = value(
 				globs, s0, strike, t,
 				alpha, nu, beta,

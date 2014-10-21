@@ -182,7 +182,7 @@ void run_OrigCPU(
 	
 	#pragma omp parallel for default(shared) schedule(static) if(outer>4)
 	for(unsigned i = 0; i < outer; ++i) {
-		REAL strike = 0.001*i;;
+		REAL strike = 0.001*i;
 		PrivGlobs globs(numX, numY, numT);
 		
 		res[i] = value(

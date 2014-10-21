@@ -13,7 +13,7 @@ int main() {
 	REAL* res = (REAL*)malloc(OUTER_LOOP_COUNT*sizeof(REAL));
 	
 	{ // Original Program (Sequential CPU Execution)
-		cout<<"\n// Running Original, Sequential Project Program"<<endl;
+		cout<<"\n// Running Open MP CPU Project Program"<<endl;
 		
 		unsigned long int elapsed = 0;
 		struct timeval t_start, t_end, t_diff;
@@ -28,7 +28,7 @@ int main() {
 		// validation and writeback of the result
 		bool is_valid = validate(res, OUTER_LOOP_COUNT);
 		writeStatsAndResult(is_valid, res, OUTER_LOOP_COUNT,
-				 NUM_X, NUM_Y, NUM_T, false, /*1*/Ps, elapsed );
+				 NUM_X, NUM_Y, NUM_T, false, Ps, elapsed );
 	}
 	
 	return 0;

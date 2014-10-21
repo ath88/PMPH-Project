@@ -1,3 +1,7 @@
 *.swp
 *.pdf
 *~
+*.o
+
+runproject
+Debug.txt

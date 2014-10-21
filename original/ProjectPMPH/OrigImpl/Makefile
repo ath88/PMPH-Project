@@ -1,6 +1,6 @@
 CXX        = g++
 LIB        = -L$(OPENCL_LIBDIR) -lOpenCL
-CXXFLAGS   = -fopenmp -O3 -DWITH_FLOATS=1
+CXXFLAGS   = -fopenmp -O3 -DWITH_FLOATS=0
 
 INCLUDES    += -I ../include
 GPU_OPTS   = -D lgWARP=5

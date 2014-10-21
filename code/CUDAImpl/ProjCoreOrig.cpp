@@ -63,7 +63,7 @@ inline void tridag(
 
 
 void rollback(const unsigned g, PrivGlobs &globs) {
-	unsigned numX = globs.myX.size(),
+	unsigned numX = globs.myX.size();
 	unsigned numY = globs.myY.size();
 	
 	unsigned numZ = max(numX,numY);

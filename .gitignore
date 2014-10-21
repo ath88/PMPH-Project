@@ -2,6 +2,8 @@
 *.pdf
 *~
 *.o
+*.aux
+*.log
 
 runproject
 Debug.txt

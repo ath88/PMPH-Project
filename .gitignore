@@ -1,3 +1,6 @@
 *.swp
 *.pdf
 *~
+*.o
+
+runproject

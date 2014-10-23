@@ -1,7 +1,7 @@
 #ifndef PROJ_HELPER_FUNS
 #define PROJ_HELPER_FUNS
 
-#include <vector>
+//#include <vector>
 #include <cmath>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +36,16 @@ struct PrivGlobs {
 	REAL *myDyy; // [numY][4]
 	//vector<vector<REAL> > myDyy;  // [numY][4]
 	
+	// vectors for rollback()
+	REAL *u; // [numY][numX]
+	REAL *v; // [numX][numY]
+	REAL *a; // [max(numX,numY)]
+	REAL *b; // [max(numX,numY)]
+	REAL *c; // [max(numX,numY)]
+	REAL *y; // [max(numX,numY)]
+	REAL *yy; // [max(numX,numY)]
+	
+	
 	PrivGlobs() {
 		printf("Invalid Contructor: need to provide the array sizes! EXITING...!\n");
 		exit(0);
@@ -61,6 +71,16 @@ struct PrivGlobs {
 		this->myResult = (REAL *) malloc(sizeof(REAL) * numX * numY);
 		this->myVarX = (REAL *) malloc(sizeof(REAL) * numX * numY);
 		this->myVarY = (REAL *) malloc(sizeof(REAL) * numX * numY);
+		
+		
+		this->u = (REAL *) malloc(sizeof(REAL) * numY * numX);
+		this->v = (REAL *) malloc(sizeof(REAL) * numX * numY);
+		
+		this->a = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
+		this->b = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
+		this->c = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
+		this->y = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
+		this->yy = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
 	}
 } __attribute__ ((aligned (128)));
 
@@ -75,15 +95,15 @@ void updateParams(const unsigned g, const REAL alpha, const REAL beta, const REA
 
 void setPayoff(const REAL strike, PrivGlobs &globs);
 
-void tridag(
-	const vector<REAL> &a, // size [n]
-	const vector<REAL> &b, // size [n]
-	const vector<REAL> &c, // size [n]
-	const vector<REAL> &r, // size [n]
-	const int n,
-	vector<REAL> &u, // size [n]
-	vector<REAL> &uu // size [n] temporary
-);
+//void tridag(
+//	const vector<REAL> &a, // size [n]
+//	const vector<REAL> &b, // size [n]
+//	const vector<REAL> &c, // size [n]
+//	const vector<REAL> &r, // size [n]
+//	const int n,
+//	vector<REAL> &u, // size [n]
+//	vector<REAL> &uu // size [n] temporary
+//);
 
 void rollback(const unsigned g, PrivGlobs &globs);
 

@@ -48,11 +48,9 @@ struct PrivGlobs {
 	
 	
 	PrivGlobs() {
-		printf("Invalid Contructor: need to provide the array sizes! EXITING...!\n");
-		exit(0);
 	}
 	
-	PrivGlobs(
+	void init(
 			const unsigned int &numX,
 			const unsigned int &numY,
 			const unsigned int &numT,

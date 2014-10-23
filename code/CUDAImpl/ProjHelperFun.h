@@ -15,6 +15,7 @@ struct PrivGlobs {
 	int numX;
 	int numY;
 	int numT;
+	int outer;
 	
 	// grid
 	REAL *myX; // [numX]
@@ -37,13 +38,13 @@ struct PrivGlobs {
 	//vector<vector<REAL> > myDyy;  // [numY][4]
 	
 	// vectors for rollback()
-	REAL *u; // [numY][numX]
-	REAL *v; // [numX][numY]
-	REAL *a; // [max(numX,numY)]
-	REAL *b; // [max(numX,numY)]
-	REAL *c; // [max(numX,numY)]
-	REAL *y; // [max(numX,numY)]
-	REAL *yy; // [max(numX,numY)]
+	REAL *u; // [outer][y][numY][numX]
+	REAL *v; // [outer][y][numX][numY]
+	REAL *a; // [outer][y][max(numX,numY)]
+	REAL *b; // [outer][y][max(numX,numY)]
+	REAL *c; // [outer][y][max(numX,numY)]
+	REAL *y; // [outer][y][max(numX,numY)]
+	REAL *yy; // [outer][y][max(numX,numY)]
 	
 	
 	PrivGlobs() {
@@ -51,14 +52,15 @@ struct PrivGlobs {
 		exit(0);
 	}
 	
-	//void init(
 	PrivGlobs(
 			const unsigned int &numX,
 			const unsigned int &numY,
-			const unsigned int &numT) {
+			const unsigned int &numT,
+			const unsigned int &outer) {
 		this->numX = numX;
 		this->numY = numY;
 		this->numT = numT;
+		this->outer = outer;
 		
 		this->myX = (REAL *) malloc(sizeof(REAL) * numX);
 		this->myY = (REAL *) malloc(sizeof(REAL) * numY);
@@ -73,14 +75,15 @@ struct PrivGlobs {
 		this->myVarY = (REAL *) malloc(sizeof(REAL) * numX * numY);
 		
 		
-		this->u = (REAL *) malloc(sizeof(REAL) * numY * numX);
-		this->v = (REAL *) malloc(sizeof(REAL) * numX * numY);
+		this->u = (REAL *) malloc(sizeof(REAL) * outer * numY * numY * numX);
+		this->v = (REAL *) malloc(sizeof(REAL) * outer * numY * numX * numY);
 		
-		this->a = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
-		this->b = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
-		this->c = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
-		this->y = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
-		this->yy = (REAL *) malloc(sizeof(REAL) * (numX > numY ? numX : numY));
+		// note: assuming that: numY == max(numX, numY)
+		this->a = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->b = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->c = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->y = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->yy = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 	}
 } __attribute__ ((aligned (128)));
 
@@ -88,7 +91,6 @@ struct PrivGlobs {
 void initGrid(const REAL s0, const REAL alpha, const REAL nu,const REAL t,
 		const unsigned numX, const unsigned numY, const unsigned numT, PrivGlobs& globs);
 
-//void initOperator(const vector<REAL> &x, vector<vector<REAL> > &Dxx);
 void initOperator(const REAL *x, REAL *Dxx, const int n);
 
 void updateParams(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs &globs);

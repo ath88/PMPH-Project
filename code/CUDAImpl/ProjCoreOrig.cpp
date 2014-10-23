@@ -90,13 +90,30 @@ void rollback(const unsigned g, PrivGlobs &globs) {
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
-	REAL *u = globs.u; // [numY][numX]
-	REAL *v = globs.v; // [numX][numY]
-	REAL *a = globs.a;
-	REAL *b = globs.b;
-	REAL *c = globs.c;
-	REAL *y = globs.y;
-	REAL *yy = globs.yy;
+	int outerId = 0;
+	int yId = 0;
+	
+	REAL *u = globs.u
+			+ outerId * yId * numX * numY
+			+ yId * numY * numX; // [outer][y][numY][numX]
+	REAL *v = globs.v
+			+ outerId * yId * numX * numY
+			+ yId * numY * numX; // [outer][y][numY][numX]
+	REAL *a = globs.a
+			+ outerId * yId * numY
+			+ yId * numY; // [outer][y][max(numX,numY)]
+	REAL *b = globs.b
+			+ outerId * yId * numY
+			+ yId * numY; // [outer][y][max(numX,numY)]
+	REAL *c = globs.c
+			+ outerId * yId * numY
+			+ yId * numY; // [outer][y][max(numX,numY)]
+	REAL *y = globs.y
+			+ outerId * yId * numY
+			+ yId * numY; // [outer][y][max(numX,numY)]
+	REAL *yy = globs.yy
+			+ outerId * yId * numY
+			+ yId * numY; // [outer][y][max(numX,numY)]
 	
 	// explicit x
 	TIMER_START(rollback_0);
@@ -233,7 +250,7 @@ void run_OrigCPU(
 	TIMER_INIT(rollback_3);
 	
 	REAL strike;
-	PrivGlobs globs(numX, numY, numT);
+	PrivGlobs globs(numX, numY, numT, outer);
 	
 	TIMER_INIT(updateParams);
 	TIMER_INIT(rollback);

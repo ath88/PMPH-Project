@@ -1,8 +1,12 @@
+extern "C" {
+
 #ifndef TIMERS_H
 #define TIMERS_H
 
 #include <time.h>
 #include <sys/time.h>
+
+#define USE_TIMERS
 
 
 int timeval_subtract_(
@@ -108,3 +112,5 @@ int timer_indent_get();
 
 
 #endif // TIMERS_H
+
+} // extern "C"

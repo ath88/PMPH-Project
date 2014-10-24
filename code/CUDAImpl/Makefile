@@ -6,9 +6,9 @@ CXXFLAGS   = -O3 -DWITH_FLOATS=1
 INCLUDES    += -I ../include
 GPU_OPTS   = -arch=sm_20 -D lgWARP=5
 
-SOURCES_CPP =ProjectMain.cpp ProjHelperFun.cpp ProjCoreOrig.cu timers.c
+SOURCES_CPP =ProjectMain.cpp ProjHelperFun.cpp ProjCoreOrig.cu timers.cu
 HELPERS     =ProjHelperFun.h ../include/Constants.h ../include/ParseInput.h ../include/ParserC.h ../include/OpenmpUtil.h timers.h
-OBJECTS     =timers.o ProjectMain.o ProjHelperFun.o ProjCoreOrig.o
+OBJECTS     =ProjectMain.o ProjHelperFun.o ProjCoreOrig.o timers.o
 EXECUTABLE  =runproject
 
 
@@ -20,7 +20,6 @@ default: gpu
 .c.o: $(SOURCES_CPP) $(HELPERS)
 	$(CXX) $(CXXFLAGS) $(GPU_OPTS) $(INCLUDES) -c -o $@ $<
 
-# .cu.o: $(SOURCES_CPP) $(HELPERS)
 %.o: %.cu $(SOURCES_CPP) $(HELPERS)
 	$(CXX) $(CXXFLAGS) $(GPU_OPTS) $(INCLUDES) -c -o $@ $<
 

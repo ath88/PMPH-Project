@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "Constants.h"
 
+#include <cuda_runtime.h>
+
 using namespace std;
 
 
@@ -46,6 +48,10 @@ struct PrivGlobs {
 	REAL *y; // [outer][y][max(numX,numY)]
 	REAL *yy; // [outer][y][max(numX,numY)]
 	
+	// host pointer to struct containing device pointers
+	struct PrivGlobs *device;
+	// device pointer to struct containing device pointers
+	struct PrivGlobs *d_globs;
 	
 	PrivGlobs() {
 	}
@@ -82,6 +88,83 @@ struct PrivGlobs {
 		this->c = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->y = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->yy = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		
+		// init device
+		this->device = (struct PrivGlobs *) malloc(sizeof(struct PrivGlobs));
+		this->device->numX = numX;
+		this->device->numY = numY;
+		this->device->numT = numT;
+		this->device->outer = outer;
+		cudaMalloc(&this->device->myX, sizeof(REAL) * numX);
+		cudaMalloc(&this->device->myY, sizeof(REAL) * numY);
+		cudaMalloc(&this->device->myDxx, sizeof(REAL) * numX * 4);
+		cudaMalloc(&this->device->myDyy, sizeof(REAL) * numY * 4);
+		cudaMalloc(&this->device->myTimeline, sizeof(REAL) * numT);
+		cudaMalloc(&this->device->myResult, sizeof(REAL) * numX * numY);
+		cudaMalloc(&this->device->myVarX, sizeof(REAL) * numX * numY);
+		cudaMalloc(&this->device->myVarY, sizeof(REAL) * numX * numY);
+		cudaMalloc(&this->device->u, sizeof(REAL) * outer * numY * numY * numX);
+		cudaMalloc(&this->device->v, sizeof(REAL) * outer * numY * numX * numY);
+		cudaMalloc(&this->device->a, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->b, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->c, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->y, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->yy, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc((void **) &this->d_globs, sizeof(PrivGlobs));
+	}
+	
+	void free() {
+		cudaFree(this->device->myX);
+		cudaFree(this->device->myY);
+		cudaFree(this->device->myDxx);
+		cudaFree(this->device->myDyy);
+		cudaFree(this->device->myTimeline);
+		cudaFree(this->device->myResult);
+		cudaFree(this->device->myVarX);
+		cudaFree(this->device->myVarY);
+		cudaFree(this->device->u);
+		cudaFree(this->device->v);
+		cudaFree(this->device->a);
+		cudaFree(this->device->b);
+		cudaFree(this->device->c);
+		cudaFree(this->device->y);
+		cudaFree(this->device->yy);
+	}
+	
+	void copyToDevice() {
+		cudaMemcpy(this->device->myX, this->myX, sizeof(REAL) * numX, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myY, this->myY, sizeof(REAL) * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myDxx, this->myDxx, sizeof(REAL) * numX * 4, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myDyy, this->myDyy, sizeof(REAL) * numY * 4, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myTimeline, this->myTimeline, sizeof(REAL) * numT, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myResult, this->myResult, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myVarX, this->myVarX, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myVarY, this->myVarY, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->u, this->u, sizeof(REAL) * outer * numY * numY * numX, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->v, this->v, sizeof(REAL) * outer * numY * numX * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->a, this->a, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->b, this->b, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->c, this->c, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->y, this->y, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->yy, this->yy, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
+	}
+	
+	void copyFromDevice() {
+		cudaMemcpy(this->myX, this->device->myX, sizeof(REAL) * numX, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myY, this->device->myY, sizeof(REAL) * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myDxx, this->device->myDxx, sizeof(REAL) * numX * 4, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myDyy, this->device->myDyy, sizeof(REAL) * numY * 4, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myTimeline, this->device->myTimeline, sizeof(REAL) * numT, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myResult, this->device->myResult, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myVarX, this->device->myVarX, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myVarY, this->device->myVarY, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->u, this->device->u, sizeof(REAL) * outer * numY * numY * numX, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->v, this->device->v, sizeof(REAL) * outer * numY * numX * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->a, this->device->a, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->b, this->device->b, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->c, this->device->c, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->device->y, this->device->y, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->yy, this->device->yy, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
 	}
 };
 

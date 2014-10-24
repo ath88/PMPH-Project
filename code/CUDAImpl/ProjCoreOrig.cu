@@ -122,7 +122,7 @@ void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, cons
 	
 	report_cuda_error("One\n");
 
- 	cudaMemcpy(h_globs.myX, globs.myX, sizeof(REAL) * numX, cudaMemcpyHostToDevice);
+	cudaMemcpy(h_globs.myX, globs.myX, sizeof(REAL) * numX, cudaMemcpyHostToDevice);
 	report_cuda_error("Hej\n");
 	cudaMemcpy(h_globs.myY, globs.myY, sizeof(REAL) * numY, cudaMemcpyHostToDevice);
 	cudaMemcpy(h_globs.myDxx, globs.myDxx, sizeof(REAL) * numX * 4, cudaMemcpyHostToDevice);
@@ -359,87 +359,14 @@ void rollback0_host (unsigned int g, PrivGlobs &globs) {
 	int numY = globs.numY;
 	int numT = globs.numT;
 	
-	PrivGlobs h_globs;
-
-	cudaMalloc(&h_globs.myX, sizeof(REAL) * numX);
-	cudaMalloc(&h_globs.myY, sizeof(REAL) * numY);
-	cudaMalloc(&h_globs.myDxx, sizeof(REAL) * numX * 4);
-	cudaMalloc(&h_globs.myDyy, sizeof(REAL) * numY * 4);
-	cudaMalloc(&h_globs.myTimeline, sizeof(REAL) * numT);
-	cudaMalloc(&h_globs.myResult, sizeof(REAL) * numX * numY);
-	cudaMalloc(&h_globs.myVarX, sizeof(REAL) * numX * numY);
-	cudaMalloc(&h_globs.myVarY, sizeof(REAL) * numX * numY);
-	cudaMalloc(&h_globs.u, sizeof(REAL) * outer * numY * numY * numX);
-	cudaMalloc(&h_globs.v, sizeof(REAL) * outer * numY * numX * numY);
-	cudaMalloc(&h_globs.a, sizeof(REAL) * outer * numY * numY);
-	cudaMalloc(&h_globs.b, sizeof(REAL) * outer * numY * numY);
-	cudaMalloc(&h_globs.c, sizeof(REAL) * outer * numY * numY);
-	cudaMalloc(&h_globs.y, sizeof(REAL) * outer * numY * numY);
-	cudaMalloc(&h_globs.yy, sizeof(REAL) * outer * numY * numY);
-	
+	globs.copyToDevice();
 	report_cuda_error("One\n");
-
- 	cudaMemcpy(h_globs.myX, globs.myX, sizeof(REAL) * numX, cudaMemcpyHostToDevice);
-	report_cuda_error("Hej\n");
-	cudaMemcpy(h_globs.myY, globs.myY, sizeof(REAL) * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.myDxx, globs.myDxx, sizeof(REAL) * numX * 4, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.myDyy, globs.myDyy, sizeof(REAL) * numY * 4, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.myTimeline, globs.myTimeline, sizeof(REAL) * numT, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.myResult, globs.myResult, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.myVarX, globs.myVarX, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.myVarY, globs.myVarY, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.u, globs.u, sizeof(REAL) * outer * numY * numY * numX, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.v, globs.v, sizeof(REAL) * outer * numY * numX * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.a, globs.a, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.b, globs.b, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.c, globs.c, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.y, globs.y, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
-	cudaMemcpy(h_globs.yy, globs.yy, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
 	
+	rollback0_kernel <<< 1,1 >>> (g, globs.d_globs);
 	report_cuda_error("Two\n");
-
-	PrivGlobs *d_globs;
-	cudaMalloc((void **) &d_globs, sizeof(PrivGlobs));
-	cudaMemcpy(d_globs, &h_globs, sizeof(PrivGlobs), cudaMemcpyHostToDevice);
-
+	
+	globs.copyFromDevice();
 	report_cuda_error("Three\n");
-	
-	rollback0_kernel <<< 1,1 >>> (g, d_globs);
-
-	report_cuda_error("Four\n");
-
-	cudaMemcpy(globs.myX, h_globs.myX, sizeof(REAL) * numX, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.myY, h_globs.myY, sizeof(REAL) * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.myDxx, h_globs.myDxx, sizeof(REAL) * numX * 4, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.myDyy, h_globs.myDyy, sizeof(REAL) * numY * 4, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.myTimeline, h_globs.myTimeline, sizeof(REAL) * numT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.myResult, h_globs.myResult, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.myVarX, h_globs.myVarX, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.myVarY, h_globs.myVarY, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.u, h_globs.u, sizeof(REAL) * outer * numY * numY * numX, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.v, h_globs.v, sizeof(REAL) * outer * numY * numX * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.a, h_globs.a, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.b, h_globs.b, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.c, h_globs.c, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.y, h_globs.y, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
-	cudaMemcpy(globs.yy, h_globs.yy, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);
-	report_cuda_error("Five\n");
-	
-	cudaFree(h_globs.myX);
-	cudaFree(h_globs.myY);
-	cudaFree(h_globs.myDxx);
-	cudaFree(h_globs.myDyy);
-	cudaFree(h_globs.myTimeline);
-	cudaFree(h_globs.myResult);
-	cudaFree(h_globs.myVarX);
-	cudaFree(h_globs.myVarY);
-	cudaFree(h_globs.u);
-	cudaFree(h_globs.v);
-	cudaFree(h_globs.a);
-	cudaFree(h_globs.b);
-	cudaFree(h_globs.c);
-	cudaFree(h_globs.y);
-	cudaFree(h_globs.yy);
 }
 
 void rollback0 (unsigned int g, PrivGlobs &globs) {
@@ -545,6 +472,8 @@ void run_OrigCPU(
 	}
 	
 	TIMER_STOP(run_OrigCPU);
+	
+	globs.free();
 	
 	TIMER_REPORT(run_OrigCPU);
 	TIMER_GROUP();

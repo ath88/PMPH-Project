@@ -1,10 +1,21 @@
 cat ../Data/Small/input.data ../Data/Small/output.data | ./runproject 2> Debug.txt
 
 // Running Original, Sequential Project Program
+run_OrigCPU                2050766 µs
+  init                         171 µs
+  setPayoff                    174 µs
+  updateParams             1199969 µs
+  rollback                  839027 µs
+    rollback_0              117198 µs
+    rollback_1              111773 µs
+    rollback_2              286646 µs
+      tridag_0              203364 µs
+    rollback_3              304214 µs
+      tridag_1              200502 µs
 // OUTER=16, NUM_X=32, NUM_Y=256, NUM_T=90.
 1		// VALID   Result,
-2641061		// Runtime in microseconds,
-1		// CPU Threads,
+2050880		// Runtime in microseconds,
+32		// CPU Threads,
 
 
  [ 0.030000 , 0.029000 , 0.028000 , 0.027000 , 0.026000 , 0.025104 , 0.024769 , 0.024435 , 0.024101 , 0.023766 , 0.023432 , 0.023098 , 0.022763 , 0.022429 , 0.022115 , 0.021808  ]	//PMPH Project Result

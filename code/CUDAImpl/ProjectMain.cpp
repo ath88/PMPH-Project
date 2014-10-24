@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 int main() {
-	//timers_init();
+	timers_init();
 	
 	unsigned int OUTER_LOOP_COUNT, NUM_X, NUM_Y, NUM_T; 
 	const REAL s0 = 0.03, strike = 0.03, t = 5.0, alpha = 0.2, nu = 0.6, beta = 0.5;

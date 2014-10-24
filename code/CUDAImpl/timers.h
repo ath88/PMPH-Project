@@ -78,7 +78,7 @@ int timer_indent_get();
 	for(int i = 0; i < timer_indent_get(); i += 1) { \
 		printf("  "); \
 	} \
-	printf("%-20s%*i µs\n", \
+	printf("%-20s%*i microseconds\n", \
 			#name " ", \
 			14 - timer_indent_get() * 2, \
 			timeval_get_mu_s(&timer_##name##_total)); \

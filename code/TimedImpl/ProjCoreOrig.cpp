@@ -3,12 +3,16 @@
 #include "timers.h"
 
 TIMER_DEFINE(run_OrigCPU);
+	TIMER_DEFINE(init);
+	TIMER_DEFINE(setPayoff);
 	TIMER_DEFINE(updateParams);
 	TIMER_DEFINE(rollback);
 		TIMER_DEFINE(rollback_0);
 		TIMER_DEFINE(rollback_1);
 		TIMER_DEFINE(rollback_2);
+			TIMER_DEFINE(tridag_0);
 		TIMER_DEFINE(rollback_3);
+			TIMER_DEFINE(tridag_1);
 
 void updateParams(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs& globs) {
 	TIMER_START(updateParams);
@@ -30,12 +34,16 @@ void updateParams(const unsigned g, const REAL alpha, const REAL beta, const REA
 }
 
 void setPayoff(const REAL strike, PrivGlobs& globs) {
+	TIMER_START(setPayoff);
+
 	for(unsigned i = 0; i < globs.myX.size(); ++i) {
 		REAL payoff = max(globs.myX[i] - strike, (REAL)0.0);
 		for(unsigned j = 0; j < globs.myY.size(); ++j) {
 			globs.myResult[i][j] = payoff;
 		}
 	}
+
+	TIMER_STOP(setPayoff);
 }
 
 inline void tridag(
@@ -143,7 +151,9 @@ void rollback(const unsigned g, PrivGlobs &globs) {
 			c[i] = -0.5 * (0.5 * globs.myVarX[i][j] * globs.myDxx[i][2]);
 		}
 		// here yy should have size [numX]
+		TIMER_START(tridag_0);
 		tridag(a,b,c,u[j],numX,u[j],yy);
+		TIMER_STOP(tridag_0);
 	}
 	TIMER_STOP(rollback_2);
 	
@@ -161,7 +171,9 @@ void rollback(const unsigned g, PrivGlobs &globs) {
 		}
 		
 		// here yy should have size [numY]
+		TIMER_START(tridag_1);
 		tridag(a,b,c,y,numY,globs.myResult[i],yy);
+		TIMER_STOP(tridag_1);
 	}
 	TIMER_STOP(rollback_3);
 	
@@ -180,11 +192,15 @@ REAL value(
 		const unsigned int numY,
 		const unsigned int numT
 ) {
+	TIMER_START(init);
 	initGrid(s0,alpha,nu,t, numX, numY, numT, globs);
 	initOperator(globs.myX,globs.myDxx);
 	initOperator(globs.myY,globs.myDyy);
+	TIMER_STOP(init);
 
+	TIMER_START(setPayoff);
 	setPayoff(strike, globs);
+	TIMER_STOP(setPayoff);
 	
 	for(int i = globs.myTimeline.size()-2; i>=0; --i) {
 		updateParams(i,alpha,beta,nu,globs);
@@ -208,19 +224,22 @@ void run_OrigCPU(
 		REAL *res // [outer] RESULT
 ) {
 	TIMER_INIT(run_OrigCPU);
-	TIMER_START(run_OrigCPU);
-	
+	TIMER_INIT(init);
+	TIMER_INIT(setPayoff);
+	TIMER_INIT(updateParams);
+	TIMER_INIT(rollback);
 	TIMER_INIT(rollback_0);
 	TIMER_INIT(rollback_1);
 	TIMER_INIT(rollback_2);
+	TIMER_INIT(tridag_0);
 	TIMER_INIT(rollback_3);
+	TIMER_INIT(tridag_1);
 	
 	REAL strike;
 	PrivGlobs globs(numX, numY, numT);
 	
-	TIMER_INIT(updateParams);
-	TIMER_INIT(rollback);
 	
+	TIMER_START(run_OrigCPU);
 	for(unsigned i = 0; i < outer; ++i) {
 		strike = 0.001*i;
 		res[i] = value(
@@ -228,18 +247,25 @@ void run_OrigCPU(
 				alpha, nu, beta,
 				numX, numY, numT );
 	}
-	
 	TIMER_STOP(run_OrigCPU);
 	
 	TIMER_REPORT(run_OrigCPU);
 	TIMER_GROUP();
+	TIMER_REPORT(init);
+	TIMER_REPORT(setPayoff);
 	TIMER_REPORT(updateParams);
 	TIMER_REPORT(rollback);
 	TIMER_GROUP();
 	TIMER_REPORT(rollback_0);
 	TIMER_REPORT(rollback_1);
 	TIMER_REPORT(rollback_2);
+	TIMER_GROUP();
+	TIMER_REPORT(tridag_0);
+	TIMER_GROUP_END();
 	TIMER_REPORT(rollback_3);
+	TIMER_GROUP();
+	TIMER_REPORT(tridag_1);
+	TIMER_GROUP_END();
 	TIMER_GROUP_END();
 	TIMER_GROUP_END();
 }

@@ -21,6 +21,8 @@ cpu: $(EXECUTABLE)
 $(EXECUTABLE): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(EXECUTABLE) $(OBJECTS)
 
+run_tiny: $(EXECUTABLE)
+	cat ../Data/Tiny/input.data ../Data/Tiny/output.data | ./$(EXECUTABLE) 2> Debug.txt
 
 run_small: $(EXECUTABLE)
 	cat ../Data/Small/input.data ../Data/Small/output.data | ./$(EXECUTABLE) 2> Debug.txt

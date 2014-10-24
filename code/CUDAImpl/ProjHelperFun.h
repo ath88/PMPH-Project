@@ -83,7 +83,7 @@ struct PrivGlobs {
 		this->y = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->yy = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 	}
-} __attribute__ ((aligned (128)));
+};
 
 
 void initGrid(const REAL s0, const REAL alpha, const REAL nu,const REAL t,

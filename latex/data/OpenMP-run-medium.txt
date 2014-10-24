@@ -1,6 +1,6 @@
 cat ../Data/Medium/input.data ../Data/Medium/output.data | ./runproject 2> Debug.txt
 
-// Running Open MP CPU Project Program
+// Running OpenMP CPU Project Program
 // OUTER=32, NUM_X=47, NUM_Y=181, NUM_T=93.
 1		// VALID   Result,
 235295		// Runtime in microseconds,

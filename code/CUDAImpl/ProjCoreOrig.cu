@@ -258,7 +258,7 @@ void updateParams(const unsigned g, const REAL alpha, const REAL beta, const REA
 void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs& globs) {
 	TIMER_START(updateParams);
 	
-	globs.copyToDevice();
+//	globs.copyToDevice();
 	report_cuda_error("One\n");
 	
 	updateParams_kernel <<< dim3(1, globs.numY), dim3(32,32) >>> (g, alpha, beta, nu, globs.d_globs);
@@ -283,13 +283,13 @@ void setPayoff(const REAL strike, PrivGlobs& globs) {
 
 void setPayoff_host(const REAL strike, PrivGlobs& globs) {
 
-	globs.copyToDevice();
+//	globs.copyToDevice();
 	report_cuda_error("One\n");
 	
 	setPayoff_kernel <<< 1,1 >>> (strike, *globs.d_globs);
 	report_cuda_error("Two\n");
 	
-	globs.copyFromDevice();
+//	globs.copyFromDevice();
 	report_cuda_error("Three\n");
 
 }
@@ -409,7 +409,7 @@ void rollback0_host (unsigned int g, PrivGlobs &globs) {
 	report_cuda_error("One\n");
 	
 	rollback0_kernel <<< 1,1 >>> (g, globs.d_globs);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 	
 	//globs.copyFromDevice();
@@ -421,7 +421,7 @@ void rollback1_host (unsigned int g, PrivGlobs &globs) {
 	report_cuda_error("One\n");
 	
 	rollback1_kernel <<< 1,1 >>> (g, globs.d_globs);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 	
 	//globs.copyFromDevice();
@@ -433,7 +433,7 @@ void rollback2_host (unsigned int g, PrivGlobs &globs) {
 	report_cuda_error("One\n");
 	
 	rollback2_kernel <<< 1,1 >>> (g, *globs.d_globs);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 	
 	//globs.copyFromDevice();
@@ -445,10 +445,10 @@ void rollback3_host (unsigned int g, PrivGlobs &globs) {
 	report_cuda_error("One\n");
 	
 	rollback3_kernel <<< 1,1 >>> (g, *globs.d_globs);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 	
-	globs.copyFromDevice();
+//	globs.copyFromDevice();
 	report_cuda_error("Three\n");
 }
 
@@ -649,6 +649,10 @@ REAL value(
 		const unsigned int numT
 ) {
 
+	printf("copyToDevice\n");
+	globs.copyToDevice();
+	report_cuda_error("One\n");
+
 	setPayoff_host(strike, globs);
 	
 	unsigned int count = 0;
@@ -659,6 +663,8 @@ REAL value(
 		rollback(i, globs);
 	}
 	
+	globs.copyFromDevice();
+	report_cuda_error("One\n");
 	
 	return globs.myResult[globs.myXindex*globs.numY + globs.myYindex];
 }
@@ -693,8 +699,6 @@ void run_OrigCPU(
 	initOperator(globs.myX, globs.myDxx, globs.numX);
 	initOperator(globs.myY, globs.myDyy, globs.numY);
 	
-	globs.copyToDevice();
-	report_cuda_error("One\n");
 
 	TIMER_START(run_OrigCPU);
 	for(unsigned i = 0; i < outer; ++i) {
@@ -706,14 +710,6 @@ void run_OrigCPU(
 	}
 
 	TIMER_STOP(run_OrigCPU);
-
-	globs.copyFromDevice();
-	report_cuda_error("One\n");
-
-	for(unsigned i = 0; i < outer; ++i) {
-		res[i] = globs.myResult[globs.myXindex*globs.numY + globs.myYindex];
-	}
-	
 	globs.free();
 	
 	TIMER_REPORT(run_OrigCPU);

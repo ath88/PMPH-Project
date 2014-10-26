@@ -65,9 +65,7 @@ __global__ void rollback0_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	int yId = 0;
 	
 	REAL *myResult = globs.myResult + o * numY * numX;
-	REAL *u = globs.u
-			+ outerId * numY * numY * numX // [outer][y][numY][numX]
-			+ yId * numY * numX; 
+	REAL *u = globs.u + outerId * numY * numX; // [outer][numY][numX]
 
 	for(i=0; i<numX; i++) {
 		u[j*numX + i] = dtInv*myResult[i*globs.numY + j];
@@ -100,12 +98,8 @@ __global__ void rollback1_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	int yId = 0;
 	
 	REAL *myResult = globs.myResult + o * numY * numX;
-	REAL *u = globs.u
-			+ outerId * numY * numY * numX // [outer][y][numY][numX]
-			+ yId * numY * numX; 
-	REAL *v = globs.v
-			+ outerId * numY * numY * numX // [outer][y][numY][numX]
-			+ yId * numY * numX; 
+	REAL *u = globs.u + outerId * numY * numX; // [outer][numY][numX]
+	REAL *v = globs.v + outerId * numY * numX; // [outer][numY][numX]
 
 	for(i=0; i<numX; i++) {
 		v[i*numY + j] = 0.0;
@@ -138,9 +132,7 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	int outerId = 0;
 	int yId = 0;
 	
-	REAL *u = globs.u
-			+ outerId * yId * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
+	REAL *u = globs.u + outerId * numY * numX; // [outer][numY][numX]
 	REAL *a = globs.a
 			+ outerId * yId * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]
@@ -180,12 +172,8 @@ __global__ void rollback3_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	int yId = 0;
 	
 	REAL *myResult = globs.myResult + o * numY * numX;
-	REAL *u = globs.u
-			+ outerId * yId * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
-	REAL *v = globs.v
-			+ outerId * yId * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
+	REAL *u = globs.u + outerId * numY * numX; // [outer][numY][numX]
+	REAL *v = globs.v + outerId * numY * numX; // [outer][numY][numX]
 	REAL *a = globs.a
 			+ outerId * yId * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]
@@ -377,28 +365,27 @@ void run_OrigCPU(
 	PrivGlobs globs;
 	globs.init(numX, numY, numT, outer);
 	
-	reportMemoryUsage();
-	
 	initGrid(s0,alpha,nu,t, numX, numY, numT, globs);
 	initOperator(globs.myX, globs.myDxx, globs.numX);
 	initOperator(globs.myY, globs.myDyy, globs.numY);
-
+	
 	globs.cuda_init();
 	report_cuda_error("Init\n");
-
+	reportMemoryUsage();
+	
 	globs.copyToDevice();
 	report_cuda_error("CopyToDevice\n");
-
+	
 	TIMER_START(run_OrigCPU);
 	int count = 0;
 	for(unsigned o = 0; o < outer; ++o) {
 		printf("%d / %d\n", count++, outer);
-		cudaDeviceSynchronize();
 		strike = 0.001*o;
 		value(
 				globs, s0, strike, t,
 				alpha, nu, beta,
 				numX, numY, numT, o);
+		cudaDeviceSynchronize();
 	}
 	TIMER_STOP(run_OrigCPU);
 

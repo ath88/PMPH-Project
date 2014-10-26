@@ -55,7 +55,9 @@ __global__ void rollback0_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned i, j;
+	unsigned i;
+	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
+	if (j >= globs.numY) return;
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
@@ -68,22 +70,20 @@ __global__ void rollback0_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 			+ yId * numY * numX; 
 
 	for(i=0; i<numX; i++) {
-		for(j=0; j<numY; j++) {
-			u[j*numX + i] = dtInv*myResult[i*globs.numY + j];
+		u[j*numX + i] = dtInv*myResult[i*globs.numY + j];
 			
-			if(i > 0) { 
-				u[j*numX + i] += 0.5 * (0.5
-						* globs.myVarX[i*globs.numY + j] * globs.myDxx[i*4 + 0])
-						* myResult[(i-1)*globs.numY + j];
-			}
+		if(i > 0) { 
 			u[j*numX + i] += 0.5 * (0.5
-					* globs.myVarX[i*globs.numY + j] * globs.myDxx[i*4 + 1])
-					* myResult[i*globs.numY + j];
-			if(i < numX - 1) {
-				u[j*numX + i] += 0.5 * (0.5
-						* globs.myVarX[i*globs.numY + j] * globs.myDxx[i*4 + 2])
-						* myResult[(i+1)*globs.numY + j];
-			}
+					* globs.myVarX[i*globs.numY + j] * globs.myDxx[i*4 + 0])
+					* myResult[(i-1)*globs.numY + j];
+		}
+		u[j*numX + i] += 0.5 * (0.5
+				* globs.myVarX[i*globs.numY + j] * globs.myDxx[i*4 + 1])
+				* myResult[i*globs.numY + j];
+		if(i < numX - 1) {
+			u[j*numX + i] += 0.5 * (0.5
+					* globs.myVarX[i*globs.numY + j] * globs.myDxx[i*4 + 2])
+					* myResult[(i+1)*globs.numY + j];
 		}
 	}
 }
@@ -92,7 +92,9 @@ __global__ void rollback1_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned i, j;
+	unsigned i;
+	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
+	if (j >= globs.numY) return;
 	
 	int outerId = 0;
 	int yId = 0;
@@ -105,25 +107,23 @@ __global__ void rollback1_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 			+ outerId * numY * numY * numX // [outer][y][numY][numX]
 			+ yId * numY * numX; 
 
-	for(j=0; j<numY; j++) {
-		for(i=0; i<numX; i++) {
-			v[i*numY + j] = 0.0;
-			
-			if(j > 0) {
-				v[i*numY + j] += (0.5
-						* globs.myVarY[i*globs.numY + j] * globs.myDyy[j*4 + 0])
-						* myResult[i*globs.numY + j-1];
-			}
+	for(i=0; i<numX; i++) {
+		v[i*numY + j] = 0.0;
+		
+		if(j > 0) {
 			v[i*numY + j] += (0.5
-					* globs.myVarY[i*globs.numY + j] * globs.myDyy[j*4 + 1])
-					* myResult[i*globs.numY + j];
-			if(j < numY - 1) {
-				v[i*numY + j] += (0.5
-						* globs.myVarY[i*globs.numY + j] * globs.myDyy[j*4 + 2])
-						* myResult[i*globs.numY + j+1];
-			}
-			u[j*numX + i] += v[i*numY + j];
+					* globs.myVarY[i*globs.numY + j] * globs.myDyy[j*4 + 0])
+					* myResult[i*globs.numY + j-1];
 		}
+		v[i*numY + j] += (0.5
+				* globs.myVarY[i*globs.numY + j] * globs.myDyy[j*4 + 1])
+				* myResult[i*globs.numY + j];
+		if(j < numY - 1) {
+			v[i*numY + j] += (0.5
+					* globs.myVarY[i*globs.numY + j] * globs.myDyy[j*4 + 2])
+					* myResult[i*globs.numY + j+1];
+		}
+		u[j*numX + i] += v[i*numY + j];
 	}
 }
 
@@ -313,12 +313,12 @@ void report_cuda_error(char* id) {
 }
 
 void rollback0_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	rollback0_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
+	rollback0_kernel <<< dim3(1,globs.numY), dim3(32,32) >>> (g, *globs.d_globs, o);
 	report_cuda_error("Two\n");
 }
 
 void rollback1_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	rollback1_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
+	rollback1_kernel <<< dim3(1,globs.numY), dim3(32,32) >>> (g, *globs.d_globs, o);
 	report_cuda_error("Two\n");
 }
 

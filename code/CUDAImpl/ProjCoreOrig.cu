@@ -92,10 +92,8 @@ __global__ void rollback0_kernel(unsigned int g, PrivGlobs *globs) {
 		+ o * numY * numX;
         REAL *myVarX = globs->myVarX
 		+ o * numX * numY;
-	REAL *u = globs->u
-			+ outerId * numY * numY * numX // [outer][y][numY][numX]
-			+ yId * numY * numX; 
-	
+	REAL *u = globs->u + outerId * numY * numX; // [outer][numY][numX]
+
 	for(i=0; i<numX; i++) {
 		u[j*numX + i] = dtInv*myResult[i*globs->numY + j];
 		
@@ -132,18 +130,12 @@ __global__ void rollback1_kernel(unsigned int g, PrivGlobs *globs) {
 	j = yId;
 	o = outerId;
 	
-	REAL dtInv = 1.0 / (globs->myTimeline[g+1] - globs->myTimeline[g]);
-	
 	REAL *myResult = globs->myResult
 		+ o * numY * numX;
 	REAL *myVarY = globs->myVarY
 		+ o * numX * numY;
-	REAL *u = globs->u
-			+ outerId * numY * numY * numX // [outer][y][numY][numX]
-			+ yId * numY * numX; 
-	REAL *v = globs->v
-			+ outerId * numY * numY * numX // [outer][y][numY][numX]
-			+ yId * numY * numX; 
+	REAL *u = globs->u + outerId * numY * numX; // [outer][numY][numX]
+	REAL *v = globs->v + outerId * numY * numX; // [outer][numY][numX]
 	
 	for(i=0; i<numX; i++) {
 		v[i*numY + j] = 0.0;
@@ -186,12 +178,7 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs *globs) {
 	
 	REAL *myVarX = globs->myVarX
 		+ o * numX * numY;	
-	REAL *u = globs->u
-			+ outerId * numY * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
-	REAL *v = globs->v
-			+ outerId * numY * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
+	REAL *u = globs->u + outerId * numY * numX; // [outer][numY][numX]
 	REAL *a = globs->a
 			+ outerId * numY * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]
@@ -241,12 +228,8 @@ __global__ void rollback3_kernel(unsigned int g, PrivGlobs *globs) {
 	
 	REAL *myVarY = globs->myVarY
 		+ o * numX * numY;
-	REAL *u = globs->u
-			+ outerId * numY * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
-	REAL *v = globs->v
-			+ outerId * numY * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
+	REAL *u = globs->u + outerId * numY * numX; // [outer][numY][numX]
+	REAL *v = globs->v + outerId * numY * numX; // [outer][numY][numX]
 	REAL *a = globs->a
 			+ outerId * numY * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]

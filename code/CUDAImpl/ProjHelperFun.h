@@ -77,8 +77,8 @@ struct PrivGlobs {
 		this->myTimeline = (REAL *) malloc(sizeof(REAL) * numT);
 		
 		this->myResult = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
-		this->myVarX = (REAL *) malloc(sizeof(REAL) * numX * numY);
-		this->myVarY = (REAL *) malloc(sizeof(REAL) * numX * numY);
+		this->myVarX = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
+		this->myVarY = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
 		
 		
 		this->u = (REAL *) malloc(sizeof(REAL) * outer * numY * numX);
@@ -115,8 +115,8 @@ struct PrivGlobs {
 		cudaMalloc(&this->device->myDyy, sizeof(REAL) * numY * 4);
 		cudaMalloc(&this->device->myTimeline, sizeof(REAL) * numT);
 		cudaMalloc(&this->device->myResult, sizeof(REAL) * outer * numX * numY);
-		cudaMalloc(&this->device->myVarX, sizeof(REAL) * numX * numY);
-		cudaMalloc(&this->device->myVarY, sizeof(REAL) * numX * numY);
+		cudaMalloc(&this->device->myVarX, sizeof(REAL) * outer * numX * numY);
+		cudaMalloc(&this->device->myVarY, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->u, sizeof(REAL) * outer * numY * numX);
 		cudaMalloc(&this->device->v, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->a, sizeof(REAL) * outer * numY * numY);
@@ -171,8 +171,8 @@ struct PrivGlobs {
 		cudaMemcpy(this->myDyy, this->device->myDyy, sizeof(REAL) * numY * 4, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->myTimeline, this->device->myTimeline, sizeof(REAL) * numT, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->myResult, this->device->myResult, sizeof(REAL) * outer * numX * numY, cudaMemcpyDeviceToHost);
-		cudaMemcpy(this->myVarX, this->device->myVarX, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
-		cudaMemcpy(this->myVarY, this->device->myVarY, sizeof(REAL) * numX * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myVarX, this->device->myVarX, sizeof(REAL) * outer * numX * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myVarY, this->device->myVarY, sizeof(REAL) * outer * numX * numY, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->u, this->device->u, sizeof(REAL) * outer * numY * numY * numX, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->v, this->device->v, sizeof(REAL) * outer * numY * numX * numY, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->a, this->device->a, sizeof(REAL) * outer * numY * numY, cudaMemcpyDeviceToHost);

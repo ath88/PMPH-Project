@@ -125,12 +125,13 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned i, j;
+	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
+	if (j >= globs.numY) return;
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
 	int outerId = 0;
-	int yId = 0;
+	int yId = j;
 	
 	REAL *u = globs.u + outerId * numY * numX; // [outer][numY][numX]
 	REAL *a = globs.a
@@ -145,68 +146,65 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	REAL *yy = globs.yy
 			+ outerId * yId * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]
-
-	for(j=0; j<numY; j++) {
-		for(i=0; i<numX; i++) { // here a, b,c should have size [numX]
-			a[i] = -0.5 * (0.5 * globs.myVarX[i*globs.numY + j]
-					* globs.myDxx[i*4 + 0]);
-			b[i] = dtInv - 0.5 * (0.5 * globs.myVarX[i*globs.numY + j]
-					* globs.myDxx[i*4 + 1]);
-			c[i] = -0.5 * (0.5 * globs.myVarX[i*globs.numY + j]
-					* globs.myDxx[i*4 + 2]);
-		}
-		// here yy should have size [numX]
-		d_tridag(a,b,c,u + numX*j,numX,u + numX*j,yy);
+	
+	for(int i=0; i<numX; i++) { // here a, b,c should have size [numX]
+		a[i] = -0.5 * (0.5 * globs.myVarX[i*globs.numY + j]
+				* globs.myDxx[i*4 + 0]);
+		b[i] = dtInv - 0.5 * (0.5 * globs.myVarX[i*globs.numY + j]
+				* globs.myDxx[i*4 + 1]);
+		c[i] = -0.5 * (0.5 * globs.myVarX[i*globs.numY + j]
+				* globs.myDxx[i*4 + 2]);
 	}
+	// here yy should have size [numX]
+	d_tridag(a,b,c,u + numX*j,numX,u + numX*j,yy);
 }
 
 __global__ void rollback3_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned i, j;
+	unsigned int i = threadIdx.x + blockDim.x * blockIdx.x;
+	if (i >= globs.numX) return;
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
 	int outerId = 0;
-	int yId = 0;
+	int xId = i;
 	
 	REAL *myResult = globs.myResult + o * numY * numX;
 	REAL *u = globs.u + outerId * numY * numX; // [outer][numY][numX]
 	REAL *v = globs.v + outerId * numY * numX; // [outer][numY][numX]
 	REAL *a = globs.a
-			+ outerId * yId * numY
-			+ yId * numY; // [outer][y][max(numX,numY)]
+			+ outerId * numY * numY
+			+ xId * numY; // [outer][y][max(numX,numY)]
 	REAL *b = globs.b
-			+ outerId * yId * numY
-			+ yId * numY; // [outer][y][max(numX,numY)]
+			+ outerId * numY * numY
+			+ xId * numY; // [outer][y][max(numX,numY)]
 	REAL *c = globs.c
-			+ outerId * yId * numY
-			+ yId * numY; // [outer][y][max(numX,numY)]
+			+ outerId * numY * numY
+			+ xId * numY; // [outer][y][max(numX,numY)]
 	REAL *y = globs.y
-			+ outerId * yId * numY
-			+ yId * numY; // [outer][y][max(numX,numY)]
+			+ outerId * numY * numY
+			+ xId * numY; // [outer][y][max(numX,numY)]
 	REAL *yy = globs.yy
-			+ outerId * yId * numY
-			+ yId * numY; // [outer][y][max(numX,numY)]
-
-	for(i=0; i<numX; i++) { 
-		for(j=0; j<numY; j++) { // here a, b, c should have size [numY]
-			a[j] = -0.5 * (0.5 * globs.myVarY[i*globs.numY + j]
-					* globs.myDyy[j*4 + 0]);
-			b[j] = dtInv - 0.5 * (0.5 * globs.myVarY[i*globs.numY + j]
-					* globs.myDyy[j*4 + 1]);
-			c[j] = -0.5 * (0.5 * globs.myVarY[i*globs.numY + j]
-					* globs.myDyy[j*4 + 2]);
-		}
-		
-		for(j=0; j<numY; j++) {
-			y[j] = dtInv*u[j*numX + i] - 0.5*v[i*numY + j];
-		}
-		
-		// here yy should have size [numY]
-		d_tridag(a,b,c,y,numY,myResult + i*globs.numY,yy);
+			+ outerId * numY * numY
+			+ xId * numY; // [outer][y][max(numX,numY)]
+	
+	for(int j=0; j<numY; j++) { // here a, b, c should have size [numY]
+		a[j] = -0.5 * (0.5 * globs.myVarY[i*globs.numY + j]
+				* globs.myDyy[j*4 + 0]);
+		b[j] = dtInv - 0.5 * (0.5 * globs.myVarY[i*globs.numY + j]
+				* globs.myDyy[j*4 + 1]);
+		c[j] = -0.5 * (0.5 * globs.myVarY[i*globs.numY + j]
+				* globs.myDyy[j*4 + 2]);
 	}
+	
+	for(int j=0; j<numY; j++) {
+		y[j] = dtInv*u[j*numX + i] - 0.5*v[i*numY + j];
+	}
+	
+	// here yy should have size [numY]
+	d_tridag(a,b,c,y,numY,myResult + i*globs.numY,yy);
 }
 
 TIMER_DEFINE(run_OrigCPU);
@@ -220,6 +218,7 @@ TIMER_DEFINE(run_OrigCPU);
 void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs& globs) {
 	TIMER_START(updateParams);
 	updateParams_kernel <<< dim3(1, globs.numY), dim3(32,32) >>> (g, alpha, beta, nu, *globs.d_globs);
+	cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 	TIMER_STOP(updateParams);
 }
@@ -302,21 +301,25 @@ void report_cuda_error(char* id) {
 
 void rollback0_host (unsigned int g, PrivGlobs &globs, unsigned o) {
 	rollback0_kernel <<< dim3(1,globs.numY), dim3(32,32) >>> (g, *globs.d_globs, o);
+	cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 
 void rollback1_host (unsigned int g, PrivGlobs &globs, unsigned o) {
 	rollback1_kernel <<< dim3(1,globs.numY), dim3(32,32) >>> (g, *globs.d_globs, o);
+	cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 
 void rollback2_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	rollback2_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
+	rollback2_kernel <<< dim3(1,globs.numY), dim3(32,32) >>> (g, *globs.d_globs, o);
+	cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 
 void rollback3_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	rollback3_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
+	rollback3_kernel <<< globs.numX, 1024 >>> (g, *globs.d_globs, o);
+	cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 

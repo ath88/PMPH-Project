@@ -18,7 +18,7 @@ int main() {
 	REAL* res = (REAL*)malloc(OUTER_LOOP_COUNT*sizeof(REAL));
 	
 	{ // Original Program (Sequential CPU Execution)
-		cout<<"\n// Running Original, Sequential Project Program"<<endl;
+		cout<<"\n// Running CUDA Project Program"<<endl;
 		
 		unsigned long int elapsed = 0;
 		struct timeval t_start, t_end, t_diff;

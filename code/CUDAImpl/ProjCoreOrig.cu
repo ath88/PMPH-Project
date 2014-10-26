@@ -13,21 +13,15 @@ void rollback3_host(unsigned int, PrivGlobs&, unsigned);
 
 __device__ inline void d_tridag(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*);
 
+
+// can only run up to 1024 threads, since it doesnt use blockIdx and blockDim
 __global__ void copyResult_kernel(REAL *d_res, PrivGlobs &globs) {
-
-	for(unsigned o = 0; o < globs.outer; o++) {
-		printf("numy  : %d\n", globs.numY);
-		printf("xindex: %d\n", globs.myXindex);
-		printf("yindex: %d\n", globs.myYindex);
-
-		REAL *myResult = globs.myResult + o * globs.numY * globs.numX;
-		d_res[o] = myResult[globs.myXindex * globs.numY + globs.myYindex];
-
-	}
+	unsigned o = threadIdx.x;
+	REAL *myResult = globs.myResult + o * globs.numY * globs.numX;
+	d_res[o] = myResult[globs.myXindex * globs.numY + globs.myYindex];
 }
 
 __global__ void setPayoff_kernel(const REAL strike, PrivGlobs& globs, unsigned o) {
-
 	REAL *myResult = globs.myResult + o * globs.numY * globs.numX;
 
 	for(unsigned i = 0; i < globs.numX; ++i) {
@@ -41,7 +35,6 @@ __global__ void setPayoff_kernel(const REAL strike, PrivGlobs& globs, unsigned o
 }
 
 __global__ void updateParams_kernel(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs &globs) {
-
 	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
 
 	if (j >= globs.numY) return;
@@ -61,7 +54,6 @@ __global__ void updateParams_kernel(const unsigned g, const REAL alpha, const RE
 __global__ void rollback0_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
-	unsigned numZ = numX > numY ? numX : numY;
 	
 	unsigned i, j;
 	
@@ -99,11 +91,8 @@ __global__ void rollback0_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 __global__ void rollback1_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
-	unsigned numZ = numX > numY ? numX : numY;
 	
 	unsigned i, j;
-	
-	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
 	int outerId = 0;
 	int yId = 0;
@@ -142,9 +131,6 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	//unsigned numZ = max(numX,numY);
-	unsigned numZ = numX > numY ? numX : numY;
-	
 	unsigned i, j;
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
@@ -155,9 +141,6 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	REAL *u = globs.u
 			+ outerId * yId * numX * numY
 			+ yId * numY * numX; // [outer][y][numY][numX]
-	REAL *v = globs.v
-			+ outerId * yId * numX * numY
-			+ yId * numY * numX; // [outer][y][numY][numX]
 	REAL *a = globs.a
 			+ outerId * yId * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]
@@ -165,9 +148,6 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 			+ outerId * yId * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]
 	REAL *c = globs.c
-			+ outerId * yId * numY
-			+ yId * numY; // [outer][y][max(numX,numY)]
-	REAL *y = globs.y
 			+ outerId * yId * numY
 			+ yId * numY; // [outer][y][max(numX,numY)]
 	REAL *yy = globs.yy
@@ -191,9 +171,6 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 __global__ void rollback3_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
-	
-	//unsigned numZ = max(numX,numY);
-	unsigned numZ = numX > numY ? numX : numY;
 	
 	unsigned i, j;
 	
@@ -254,30 +231,14 @@ TIMER_DEFINE(run_OrigCPU);
 
 void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs& globs) {
 	TIMER_START(updateParams);
-	
-//	globs.copyToDevice();
-	report_cuda_error("One\n");
-	
 	updateParams_kernel <<< dim3(1, globs.numY), dim3(32,32) >>> (g, alpha, beta, nu, *globs.d_globs);
 	report_cuda_error("Two\n");
-	
-//	globs.copyFromDevice();
-	report_cuda_error("Three\n");
-	
 	TIMER_STOP(updateParams);
 }
 
 void setPayoff_host(const REAL strike, PrivGlobs& globs, unsigned o) {
-
-//	globs.copyToDevice();
-	report_cuda_error("One\n");
-	
 	setPayoff_kernel <<< 1,1 >>> (strike, *globs.d_globs, o);
 	report_cuda_error("Two\n");
-	
-//	globs.copyFromDevice();
-	report_cuda_error("Three\n");
-
 }
 
 __device__ inline void d_tridag(
@@ -289,7 +250,7 @@ __device__ inline void d_tridag(
 	REAL *u,   // size [n]
 	REAL *uu   // size [n] temporary
 ) {
-	int i, offset;
+	int i;
 	REAL beta;
 	
 	u[0] = r[0];
@@ -354,54 +315,26 @@ void report_cuda_error(char* id) {
 }
 
 void rollback0_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	//globs.copyToDevice();
-	report_cuda_error("One\n");
-	
 	rollback0_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
-	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
-	
-	//globs.copyFromDevice();
-	report_cuda_error("Three\n");
 }
 
 void rollback1_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	//globs.copyToDevice();
-	report_cuda_error("One\n");
-	
 	rollback1_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
-	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
-	
-	//globs.copyFromDevice();
-	report_cuda_error("Three\n");
 }
 
 void rollback2_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	//globs.copyToDevice();
-	report_cuda_error("One\n");
-	
 	rollback2_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
-	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
-	
-	//globs.copyFromDevice();
-	report_cuda_error("Three\n");
 }
 
 void rollback3_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	//globs.copyToDevice();
-	report_cuda_error("One\n");
-	
 	rollback3_kernel <<< 1,1 >>> (g, *globs.d_globs, o);
-	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
-	
-	//globs.copyFromDevice();
-	report_cuda_error("Three\n");
 }
 
-REAL value(
+void value(
 		PrivGlobs globs,
 		const REAL s0,
 		const REAL strike,
@@ -436,7 +369,8 @@ void run_OrigCPU(
 		REAL *res // [outer] RESULT
 ) {
 	TIMER_INIT(run_OrigCPU);
-	
+	TIMER_INIT(updateParams);
+	TIMER_INIT(rollback);
 	TIMER_INIT(rollback_0);
 	TIMER_INIT(rollback_1);
 	TIMER_INIT(rollback_2);
@@ -446,32 +380,23 @@ void run_OrigCPU(
 	PrivGlobs globs;
 	globs.init(numX, numY, numT, outer);
 	
-	report_cuda_error("init\n");
 	reportMemoryUsage();
-	
-	TIMER_INIT(updateParams);
-	TIMER_INIT(rollback);
 	
 	initGrid(s0,alpha,nu,t, numX, numY, numT, globs);
 	initOperator(globs.myX, globs.myDxx, globs.numX);
 	initOperator(globs.myY, globs.myDyy, globs.numY);
 
-	printf("copyToDevice\n");
-	printf("host numy: %d\n", globs.numY);
-	printf("host xi: %d\n", globs.myXindex);
-	printf("host yi: %d\n", globs.myYindex);
+	globs.cuda_init();
+	report_cuda_error("Init\n");
+
 	globs.copyToDevice();
-	report_cuda_error("One\n");
-
-
-	REAL *d_res;
-	cudaMalloc(&d_res, sizeof(REAL) * outer);
-	copyResult_kernel <<< 1,1 >>> (d_res, *globs.d_globs);
-	cudaMemcpy(res, d_res, sizeof(REAL) * outer, cudaMemcpyDeviceToHost);
-
+	report_cuda_error("CopyToDevice\n");
 
 	TIMER_START(run_OrigCPU);
+	int count = 0;
 	for(unsigned o = 0; o < outer; ++o) {
+		printf("%d / %d\n", count++, outer);
+		cudaDeviceSynchronize();
 		strike = 0.001*o;
 		value(
 				globs, s0, strike, t,
@@ -479,20 +404,12 @@ void run_OrigCPU(
 				numX, numY, numT, o);
 	}
 	TIMER_STOP(run_OrigCPU);
-/*
-	globs.copyFromDevice();
-	for(unsigned o = 0; o < outer; ++o) {
-		REAL *myResult = globs.myResult + o * numY * numX;
-		res[o] = myResult[globs.myXindex * globs.numY + globs.myYindex];
-	}
-*/
 
-	//REAL *d_res;
+	// arrange and copy back data
+	REAL *d_res;
 	cudaMalloc(&d_res, sizeof(REAL) * outer);
-	copyResult_kernel <<< 1,1 >>> (d_res, *globs.d_globs);
+	copyResult_kernel <<< 1, globs.outer >>> (d_res, *globs.d_globs);
 	cudaMemcpy(res, d_res, sizeof(REAL) * outer, cudaMemcpyDeviceToHost);
-	
-	cudaDeviceSynchronize();
 
 	globs.free();
 	

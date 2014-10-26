@@ -90,8 +90,9 @@ struct PrivGlobs {
 		this->c = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->y = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->yy = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
-		
-		// init device
+	}
+
+	void cuda_init() {		
 		this->device = (struct PrivGlobs *) malloc(sizeof(struct PrivGlobs));
 		this->device->numX = numX;
 		this->device->numY = numY;

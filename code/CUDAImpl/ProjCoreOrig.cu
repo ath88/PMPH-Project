@@ -3,6 +3,7 @@
 #include "timers.h"
 
 #include <cuda_runtime.h>
+#include <cuda.h>
 
 void report_cuda_error(char*);
 void rollback0(unsigned int, PrivGlobs&);
@@ -657,7 +658,7 @@ REAL value(
 	
 	unsigned int count = 0;
 	for(int i = globs.numT-2; i>=0; --i) {
-		printf("count: %d\n", count++);
+		//printf("count: %d\n", count++);
 		updateParams_host(i,alpha,beta,nu,globs);
 		
 		rollback(i, globs);
@@ -692,6 +693,9 @@ void run_OrigCPU(
 	PrivGlobs globs;
 	globs.init(numX, numY, numT, outer);
 	
+	report_cuda_error("init\n");
+	reportMemoryUsage();
+	
 	TIMER_INIT(updateParams);
 	TIMER_INIT(rollback);
 	
@@ -702,6 +706,7 @@ void run_OrigCPU(
 
 	TIMER_START(run_OrigCPU);
 	for(unsigned i = 0; i < outer; ++i) {
+		printf("outer %d\n", i);
 		strike = 0.001*i;
 		res[i] = value(
 				globs, s0, strike, t,

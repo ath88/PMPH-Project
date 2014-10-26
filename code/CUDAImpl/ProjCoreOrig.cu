@@ -3,6 +3,7 @@
 #include "timers.h"
 
 #include <cuda_runtime.h>
+#include <cuda.h>
 
 void report_cuda_error(char*);
 void rollback0_host(unsigned int, PrivGlobs&, unsigned);
@@ -444,6 +445,9 @@ void run_OrigCPU(
 	REAL strike;
 	PrivGlobs globs;
 	globs.init(numX, numY, numT, outer);
+	
+	report_cuda_error("init\n");
+	reportMemoryUsage();
 	
 	TIMER_INIT(updateParams);
 	TIMER_INIT(rollback);

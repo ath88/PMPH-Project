@@ -11,6 +11,8 @@
 
 using namespace std;
 
+void reportMemoryUsage();
+void reportMemoryUsageInit();
 
 struct PrivGlobs {
 	
@@ -97,6 +99,15 @@ struct PrivGlobs {
 		this->device->outer = outer;
 		this->device->myXindex = myXindex;
 		this->device->myYindex = myYindex;
+		
+		size_t size_estimate = sizeof(REAL) * ((size_t) numX + numY + numX*4 + numY*4 + numT + numX*numY + numX*numY + numX*numY + outer*numY*numY*numX + outer*numY*numX*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY) + sizeof(PrivGlobs);
+		printf("Trying to malloc ~%dMiB on device\n", size_estimate/1024/1024);
+		
+		// hack: force init so memory use report works
+		float *dummy;
+		cudaMalloc(&dummy, 0);
+		reportMemoryUsageInit();
+		
 		cudaMalloc(&this->device->myX, sizeof(REAL) * numX);
 		cudaMalloc(&this->device->myY, sizeof(REAL) * numY);
 		cudaMalloc(&this->device->myDxx, sizeof(REAL) * numX * 4);

@@ -1,7 +1,7 @@
 # CXX        = g++
 CXX        = nvcc
 # CXXFLAGS   = -fopenmp -O3 -DWITH_FLOATS=1
-CXXFLAGS   = -O3 -DWITH_FLOATS=1
+CXXFLAGS   = -O3 -DWITH_FLOATS=1 -lcuda
 
 INCLUDES    += -I ../include
 GPU_OPTS   = -arch=sm_20 -D lgWARP=5

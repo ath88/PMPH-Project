@@ -6,10 +6,6 @@
 #include <cuda.h>
 
 void report_cuda_error(char*);
-void rollback0_host(unsigned int, PrivGlobs&, unsigned);
-void rollback1_host(unsigned int, PrivGlobs&, unsigned);
-void rollback2_host(unsigned int, PrivGlobs&, unsigned);
-void rollback3_host(unsigned int, PrivGlobs&, unsigned);
 
 __device__ inline void d_tridag(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*);
 
@@ -127,12 +123,14 @@ __global__ void rollback1_kernel(unsigned int g, PrivGlobs &globs) {
 	}
 }
 
-__global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
+__global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
 	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
+	unsigned int o = threadIdx.x + blockDim.x * blockIdx.x;
 	if (j >= globs.numY) return;
+	if (o >= globs.outer) return;
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
@@ -162,12 +160,14 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
 	d_tridag(a,b,c,u + numX*j,numX,u + numX*j,yy);
 }
 
-__global__ void rollback3_kernel(unsigned int g, PrivGlobs &globs, unsigned o) {
+__global__ void rollback3_kernel(unsigned int g, PrivGlobs &globs) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned int i = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int i = threadIdx.y + blockDim.y * blockIdx.y;
+	unsigned int o = threadIdx.x + blockDim.x * blockIdx.x;
 	if (i >= globs.numX) return;
+	if (o >= globs.outer) return;
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
@@ -220,7 +220,7 @@ void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, cons
 	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
 	dim3 threads = dim3(32,32);
 	updateParams_kernel <<< blocks, threads >>> (g, alpha, beta, nu, *globs.d_globs);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 	TIMER_STOP(updateParams);
 }
@@ -279,7 +279,7 @@ void rollback0_host (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
 	dim3 threads = dim3(32,32);
 	rollback0_kernel <<< blocks, threads >>> (g, *globs.d_globs);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 
@@ -287,19 +287,23 @@ void rollback1_host (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
 	dim3 threads = dim3(32,32);
 	rollback1_kernel <<< blocks, threads >>> (g, *globs.d_globs);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 
-void rollback2_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	rollback2_kernel <<< dim3(1,globs.numY), dim3(32,32) >>> (g, *globs.d_globs, o);
-	cudaDeviceSynchronize();
+void rollback2_host (unsigned int g, PrivGlobs &globs) {
+	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
+	dim3 threads = dim3(32,32);
+	rollback2_kernel <<< blocks, threads >>> (g, *globs.d_globs);
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 
-void rollback3_host (unsigned int g, PrivGlobs &globs, unsigned o) {
-	rollback3_kernel <<< globs.numX, 1024 >>> (g, *globs.d_globs, o);
-	cudaDeviceSynchronize();
+void rollback3_host (unsigned int g, PrivGlobs &globs) {
+	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numX+0.f)/32));
+	dim3 threads = dim3(32,32);
+	rollback3_kernel <<< blocks, threads >>> (g, *globs.d_globs);
+	//cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
 }
 
@@ -341,7 +345,7 @@ void run_OrigCPU(
 	TIMER_START(run_OrigCPU);
 	int count = 0;
 	for(int t = globs.numT-2; t>=0; --t) {
-		printf("%d / %d\n", count++, globs.numT-2);
+		//printf("%d / %d\n", count++, globs.numT-2);
 		updateParams_host(t,alpha,beta,nu,globs);
 
 		TIMER_START(rollback);
@@ -355,22 +359,19 @@ void run_OrigCPU(
 		TIMER_START(rollback_1);
 		rollback1_host(t, globs);
 		TIMER_STOP(rollback_1);
-		for(unsigned o = 0; o < outer; ++o) {
-			
-			
-			// implicit x
-			TIMER_START(rollback_2);
-			rollback2_host(t, globs, o);
-			TIMER_STOP(rollback_2);
-			
-			// implicit y
-			TIMER_START(rollback_3);
-			rollback3_host(t, globs, o);
-			TIMER_STOP(rollback_3);
-			
-		}
+
+		// implicit x
+		TIMER_START(rollback_2);
+		rollback2_host(t, globs);
+		TIMER_STOP(rollback_2);
+
+		// implicit y
+		TIMER_START(rollback_3);
+		rollback3_host(t, globs);
+		TIMER_STOP(rollback_3);
+
 		TIMER_STOP(rollback);
-		cudaDeviceSynchronize();
+		//cudaDeviceSynchronize();
 	}
 	TIMER_STOP(run_OrigCPU);
 

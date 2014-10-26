@@ -1,17 +1,17 @@
 cat ../Data/Medium/input.data ../Data/Medium/output.data | ./runproject 2> Debug.txt
 
 // Running Original, Sequential Project Program
-run_OrigCPU                4240619 µs
-  init                         238 µs
-  setPayoff                    363 µs
-  updateParams             2492123 µs
-  rollback                 1729438 µs
-    rollback_0              246938 µs
-    rollback_1              236186 µs
-    rollback_2              585957 µs
-      tridag_0              421277 µs
-    rollback_3              627087 µs
-      tridag_1              416905 µs
+run_OrigCPU                4240619 microseconds
+  init                         238 microseconds
+  setPayoff                    363 microseconds
+  updateParams             2492123 microseconds
+  rollback                 1729438 microseconds
+    rollback_0              246938 microseconds
+    rollback_1              236186 microseconds
+    rollback_2              585957 microseconds
+      tridag_0              421277 microseconds
+    rollback_3              627087 microseconds
+      tridag_1              416905 microseconds
 // OUTER=32, NUM_X=47, NUM_Y=181, NUM_T=93.
 1		// VALID   Result,
 4240778		// Runtime in microseconds,

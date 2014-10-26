@@ -81,8 +81,8 @@ struct PrivGlobs {
 		this->myVarY = (REAL *) malloc(sizeof(REAL) * numX * numY);
 		
 		
-		this->u = (REAL *) malloc(sizeof(REAL) * outer * numY * numY * numX);
-		this->v = (REAL *) malloc(sizeof(REAL) * outer * numY * numX * numY);
+		this->u = (REAL *) malloc(sizeof(REAL) * outer * numY * numX);
+		this->v = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
 		
 		// note: assuming that: numY == max(numX, numY)
 		this->a = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
@@ -101,7 +101,7 @@ struct PrivGlobs {
 		this->device->myXindex = myXindex;
 		this->device->myYindex = myYindex;
 		
-		size_t size_estimate = sizeof(REAL) * ((size_t) numX + numY + numX*4 + numY*4 + numT + numX*numY + numX*numY + numX*numY + outer*numY*numY*numX + outer*numY*numX*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY) + sizeof(PrivGlobs);
+		size_t size_estimate = sizeof(REAL) * ((size_t) numX + numY + numX*4 + numY*4 + numT + numX*numY + numX*numY + numX*numY + outer*numY*numX + outer*numX*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY + outer*numY*numY) + sizeof(PrivGlobs);
 		printf("Trying to malloc ~%dMiB on device\n", size_estimate/1024/1024);
 		
 		// hack: force init so memory use report works
@@ -117,8 +117,8 @@ struct PrivGlobs {
 		cudaMalloc(&this->device->myResult, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->myVarX, sizeof(REAL) * numX * numY);
 		cudaMalloc(&this->device->myVarY, sizeof(REAL) * numX * numY);
-		cudaMalloc(&this->device->u, sizeof(REAL) * outer * numY * numY * numX);
-		cudaMalloc(&this->device->v, sizeof(REAL) * outer * numY * numX * numY);
+		cudaMalloc(&this->device->u, sizeof(REAL) * outer * numY * numX);
+		cudaMalloc(&this->device->v, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->a, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->b, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->c, sizeof(REAL) * outer * numY * numY);
@@ -155,8 +155,8 @@ struct PrivGlobs {
 		cudaMemcpy(this->device->myResult, this->myResult, sizeof(REAL) * outer * numX * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->myVarX, this->myVarX, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->myVarY, this->myVarY, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
-		cudaMemcpy(this->device->u, this->u, sizeof(REAL) * outer * numY * numY * numX, cudaMemcpyHostToDevice);
-		cudaMemcpy(this->device->v, this->v, sizeof(REAL) * outer * numY * numX * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->u, this->u, sizeof(REAL) * outer * numY * numX, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->v, this->v, sizeof(REAL) * outer * numX * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->a, this->a, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->b, this->b, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->c, this->c, sizeof(REAL) * outer * numY * numY, cudaMemcpyHostToDevice);

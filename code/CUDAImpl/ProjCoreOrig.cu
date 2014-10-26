@@ -377,18 +377,17 @@ void run_OrigCPU(
 	PrivGlobs globs;
 	globs.init(numX, numY, numT, outer);
 	
-	reportMemoryUsage();
-	
 	initGrid(s0,alpha,nu,t, numX, numY, numT, globs);
 	initOperator(globs.myX, globs.myDxx, globs.numX);
 	initOperator(globs.myY, globs.myDyy, globs.numY);
-
+	
 	globs.cuda_init();
 	report_cuda_error("Init\n");
-
+	reportMemoryUsage();
+	
 	globs.copyToDevice();
 	report_cuda_error("CopyToDevice\n");
-
+	
 	TIMER_START(run_OrigCPU);
 	int count = 0;
 	for(unsigned o = 0; o < outer; ++o) {

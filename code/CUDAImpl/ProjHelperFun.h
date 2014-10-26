@@ -111,7 +111,7 @@ struct PrivGlobs {
 		cudaMalloc(&this->device->y, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->yy, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->d_globs, sizeof(PrivGlobs));
-		cudaMemcpy(&this->d_globs, this->device, sizeof(struct PrivGlobs), cudaMemcpyHostToDevice);
+		cudaMemcpy(this->d_globs, this->device, sizeof(struct PrivGlobs), cudaMemcpyHostToDevice);
 	}
 	
 	void free() {

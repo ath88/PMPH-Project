@@ -87,6 +87,14 @@ int timer_indent_get();
 #define TIMER_REPORT(name)
 #endif
 
+#ifdef USE_TIMERS
+#define TIMER_MU_S(name) \
+	timeval_get_mu_s(&timer_##name##_total)
+#else
+#define TIMER_MU_S(name) \
+	0
+#endif
+
 //#define TIMER_GROUP(name_string) \
 //	for(int i = 0; i < timer_indent_get(); i += 1) { \
 //		printf("  "); \

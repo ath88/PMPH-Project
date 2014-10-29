@@ -49,6 +49,11 @@ struct PrivGlobs {
 	REAL *c; // [outer][y][max(numX,numY)]
 	REAL *y; // [outer][y][max(numX,numY)]
 	REAL *yy; // [outer][y][max(numX,numY)]
+	REAL *a_trans; // [outer][y][max(numX,numY)]
+	REAL *b_trans; // [outer][y][max(numX,numY)]
+	REAL *c_trans; // [outer][y][max(numX,numY)]
+	REAL *y_trans; // [outer][y][max(numX,numY)]
+	REAL *yy_trans; // [outer][y][max(numX,numY)]
 	
 	// host pointer to struct containing device pointers
 	struct PrivGlobs *device;
@@ -90,6 +95,11 @@ struct PrivGlobs {
 		this->c = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->y = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->yy = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->a_trans = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->b_trans = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->c_trans = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->y_trans = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
+		this->yy_trans = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 	}
 
 	void cuda_init() {		
@@ -124,6 +134,11 @@ struct PrivGlobs {
 		cudaMalloc(&this->device->c, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->y, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->yy, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->a_trans, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->b_trans, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->c_trans, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->y_trans, sizeof(REAL) * outer * numY * numY);
+		cudaMalloc(&this->device->yy_trans, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->d_globs, sizeof(PrivGlobs));
 		cudaMemcpy(this->d_globs, this->device, sizeof(struct PrivGlobs), cudaMemcpyHostToDevice);
 	}
@@ -144,6 +159,11 @@ struct PrivGlobs {
 		cudaFree(this->device->c);
 		cudaFree(this->device->y);
 		cudaFree(this->device->yy);
+		cudaFree(this->device->a_trans);
+		cudaFree(this->device->b_trans);
+		cudaFree(this->device->c_trans);
+		cudaFree(this->device->y_trans);
+		cudaFree(this->device->yy_trans);
 	}
 	
 	void copyToDevice() {

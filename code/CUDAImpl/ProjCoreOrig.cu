@@ -182,8 +182,18 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
-	unsigned int o = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int j = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int o = threadIdx.y + blockDim.y * blockIdx.y;
+	
+	extern __shared__ REAL shared_myDxx[];//[numX * 4];
+	int idx = threadIdx.x + blockDim.x * threadIdx.y;
+	if(idx < numX) {
+		shared_myDxx[idx*4] = globs.myDxx[idx*4];
+		shared_myDxx[idx*4 + 1] = globs.myDxx[idx*4 + 1];
+		shared_myDxx[idx*4 + 2] = globs.myDxx[idx*4 + 2];
+		//shared_myDxx[idx*4 + 3] = globs.myDxx[idx*4 + 3];
+	}
+	
 	if (j >= globs.numY) return;
 	if (o >= globs.outer) return;
 	
@@ -191,23 +201,25 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs) {
 	
 	//REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
 	REAL *a = globs.a
-			+ o * numY * numY
-			+ j * numY; // [outer][y][max(numX,numY)]
+			+ o * numY * numY;
+			//+ j * numY; // [outer][y][max(numX,numY)]
 	REAL *b = globs.b
-			+ o * numY * numY
-			+ j  * numY; // [outer][y][max(numX,numY)]
+			+ o * numY * numY;
+			//+ j  * numY; // [outer][y][max(numX,numY)]
 	REAL *c = globs.c
-			+ o * numY * numY
-			+ j * numY; // [outer][y][max(numX,numY)]
+			+ o * numY * numY;
+			//+ j * numY; // [outer][y][max(numX,numY)]
 	
+	int this_index = j;
 	for(int i=0; i<numX; i++) { // here a, b,c should have size [numX]
-		REAL myVarX = globs.myVarX[i*globs.numY + j];
-		a[i] = -0.5 * (0.5 * myVarX
-				* globs.myDxx[i*4 + 0]);
-		b[i] = dtInv - 0.5 * (0.5 * myVarX
-				* globs.myDxx[i*4 + 1]);
-		c[i] = -0.5 * (0.5 * myVarX
-				* globs.myDxx[i*4 + 2]);
+		REAL myVarX = globs.myVarX[this_index];
+		a[this_index] = -0.5 * (0.5 * myVarX
+				* shared_myDxx[i*4 + 0]);
+		b[this_index] = dtInv - 0.5 * (0.5 * myVarX
+				* shared_myDxx[i*4 + 1]);
+		c[this_index] = -0.5 * (0.5 * myVarX
+				* shared_myDxx[i*4 + 2]);
+		this_index += numY;
 	}
 }
 __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {
@@ -224,18 +236,18 @@ __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
 	REAL *u_trans = globs.u_trans + o * numY * numY; // [outer][numY][numX]
 	REAL *a = globs.a
-			+ o * numY * numY
-			+ j * numY; // [outer][y][max(numX,numY)]
+			+ o * numY * numY;
+			//+ j * numY; // [outer][y][max(numX,numY)]
 	REAL *a_trans = globs.a_trans
 			+ o * numY * numY;
 	REAL *b = globs.b
-			+ o * numY * numY
-			+ j  * numY; // [outer][y][max(numX,numY)]
+			+ o * numY * numY;
+			//+ j  * numY; // [outer][y][max(numX,numY)]
 	REAL *b_trans = globs.b_trans
 			+ o * numY * numY;
 	REAL *c = globs.c
-			+ o * numY * numY
-			+ j * numY; // [outer][y][max(numX,numY)]
+			+ o * numY * numY;
+			//+ j * numY; // [outer][y][max(numX,numY)]
 	REAL *c_trans = globs.c_trans
 			+ o * numY * numY;
 	REAL *yy = globs.yy
@@ -246,7 +258,8 @@ __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	
 	// here yy should have size [numX]
 	//d_tridag(a,b,c,u + numX*j,numX,u + numX*j,yy);
-	d_tridag_2_trans(a_trans,b_trans,c_trans,u + j,numX,u + j,yy,j,numX,numY);
+	//d_tridag_2_trans(a_trans,b_trans,c_trans,u + j,numX,u + j,yy,j,numX,numY);
+	d_tridag_2_trans(a,b,c,u + j,numX,u + j,yy,j,numX,numY);
 	//d_tridag_trans_u(
 	//		a_trans,b_trans,c_trans,u_trans + j,numX,u_trans,yy,j,numX,numY);
 }
@@ -598,9 +611,9 @@ void rollback1_host (unsigned int g, PrivGlobs &globs) {
 }
 
 void rollback2_host (unsigned int g, PrivGlobs &globs) {
-	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
+	dim3 blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
 	dim3 threads = dim3(32,32);
-	rollback2_kernel <<< blocks, threads >>> (g, *globs.d_globs);
+	rollback2_kernel <<< blocks, threads, sizeof(REAL)*globs.numY*4 >>> (g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback2");
 }
@@ -759,9 +772,9 @@ void run_OrigCPU(
 		rollback2_host(t, globs);
 		TIMER_STOP(rollback_2);
 		
-		TIMER_START(transpose);
-		transpose_host(t, globs);
-		TIMER_STOP(transpose);
+		//TIMER_START(transpose);
+		//transpose_host(t, globs);
+		//TIMER_STOP(transpose);
 		
 		TIMER_START(rollback_2_tridag);
 		rollback2_tridag_host(t, globs);

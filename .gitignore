@@ -4,6 +4,7 @@
 *.o
 *.aux
 *.log
+.emacs.desktop*
 
 runproject
 Debug.txt

@@ -11,6 +11,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{courier}
 \usepackage{listings}
+\usepackage[pdftex,colorlinks=true]{hyperref}
 
 \begin{document}
 \title{\Title}
@@ -18,15 +19,72 @@
 \date{\today}
 \maketitle
 
+We have chosen to first reason about the original sequential implementation. 
+Next, we reason about and explain how we solved the OpenMP 
+implementation. Finally, we reason about our CUDA implementation, and measure
+it against the original implementation and the OpenMP implementation.
+
 \section{Sequential Implementation}
 \subsection{Timing}
+We have made approximate timing of specific parts of the original 
+implementation, to get an overview 
+of where we can achieve relevant speedups according to Amdahl's Law. The results
+can be seen in \autoref{table:origtime}. In the table, there are indentations 
+in the first column indicating what parts are inside other parts. For example,
+the running time of tridag\_0 is part of the running time of rollback\_2, which
+in time is part of rollback, and so forth. The time of the outer loop is the 
+total running time of the entire calculation. 
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Name \textbackslash\ Dataset & Small      & Medium     & Large        & Avg. Percentage \\ \hline
+outer                        & 2050766 us & 4240619 us & 187729378 us & 100\%           \\ \hline
+\ \ init                     & 171 us     & 238 us     & 2068 us      & \\ \hline
+\ \ setPayoff                & 174 us     & 363 us     & 10651 us     & \\ \hline
+\ \ updateParams             & 1199969 us & 2492123 us & 106691216 us & \\ \hline
+\ \ rollback                 & 839027 us  & 1729438 us & 80412624 us  & \\ \hline
+\ \ \ \ rollback\_0          & 117198 us  & 246938 us  & 11824914 us  & \\ \hline
+\ \ \ \ rollback\_1          & 111773 us  & 236186 us  & 12284147 us  & \\ \hline
+\ \ \ \ rollback\_2          & 286646 us  & 585957 us  & 25915774 us  & \\ \hline
+\ \ \ \ \ \ tridag\_0        & 203364 us  & 421277 us  & 18500994 us  & \\ \hline
+\ \ \ \ rollback\_3          & 304214 us  & 627087 us  & 28554403 us  & \\ \hline
+\ \ \ \ \ \ tridag\_1        & 200502 us  & 416905 us  & 18612169 us  & \\ \hline
+\end{tabular}
+\caption{Approximate timings of the original implementation}
+\label{table:origtime}
+\end{table}
+
 \subsection{Validation}
+The original implementation validates against all 3 datasets. This is expected,
+since we did not change the original implementation. It is assumed that the 
+original implementation is therefore correct.
+
 
 \section{OpenMP Implementation}
-To parallelize the CPU code, we placed an OpenMP pragma directive to the outermost parallel loop.
 \subsection{Privatization}
+The outer loop in the original implementation uses the same allocation of a C 
+struct for each
+iteration of the loop. This, in turn, makes it inherently not parallel, since,
+if executed in parallel, all iterations would be writing to the same memory. 
+We can, however, privatize the struct, such that all iterations allocate their
+own struct, and therefore does not read and write to the same memory. This is 
+a method known as privatization, and allows us to parallelize the entire loop
+with an OpenMP pragma directive.
+
 \subsection{Validation}
+The implementation validates against all 3 datasets. This shows that our
+implementation is not catastrophically wrong, but does not prove that it is
+correct. We can make the same assumption about correctness as with the 
+original implementation.
+
 \subsection{Speedup}
+While this implementation is parallel across multiple processors, measuring the
+time taking of specific parts of the implementation is harder. We can, however, 
+compare with the total running time, and the results can be seen in TODO FIGURE.
+
+
 
 \section{CUDA Implementation}
 

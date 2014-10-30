@@ -4,6 +4,7 @@
 *.o
 *.aux
 *.log
+*.out
 .emacs.desktop*
 
 runproject

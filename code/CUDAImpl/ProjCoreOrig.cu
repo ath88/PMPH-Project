@@ -20,11 +20,8 @@ TIMER_DEFINE(run_OrigCPU);
 
 void report_cuda_error(char*);
 
-__device__ inline void d_tridag(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*);
-__device__ inline void d_tridag_trans(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*, int, int);
-__device__ inline void d_tridag_2_trans(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*, int, int, int);
-__device__ inline void d_tridag_trans_u(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*, int, int, int);
-
+__device__ inline void d_tridag_2(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*, int, int, int);
+__device__ inline void d_tridag_3(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*, int, int);
 
 // can only run up to 1024 threads, since it doesnt use blockIdx and blockDim
 __global__ void copyResult_kernel(REAL *d_res, PrivGlobs &globs) {
@@ -243,48 +240,71 @@ __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 			+ o * numY * numY
 			+ j * numY; // [outer][y][max(numX,numY)]
 	
-	d_tridag_2_trans(a,b,c,u + j,numX,u + j,yy,j,numX,numY);
+	d_tridag_2(a,b,c,u + j,numX,u + j,yy,j,numX,numY);
 }
 
-__global__ void rollback3_kernel(unsigned int g, PrivGlobs &globs) {
+__global__ void rollback3_0_kernel(unsigned int g, PrivGlobs &globs) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned int j = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int i = threadIdx.x + blockDim.x * blockIdx.x;
 	unsigned int o = threadIdx.y + blockDim.y * blockIdx.y;
-	if (j >= globs.numY) return;
+	
+	extern __shared__ REAL shared_myDyy[];//[numX * 4];
+	int idx = threadIdx.x + blockDim.x * threadIdx.y;
+	if(idx < numY) {
+		shared_myDyy[idx*4] = globs.myDyy[idx*4];
+		shared_myDyy[idx*4 + 1] = globs.myDyy[idx*4 + 1];
+		shared_myDyy[idx*4 + 2] = globs.myDyy[idx*4 + 2];
+		//shared_myDxx[idx*4 + 3] = globs.myDxx[idx*4 + 3];
+	}
+	
+	if (i >= globs.numX) return;
 	if (o >= globs.outer) return;
 	
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
-	REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
-	REAL *v = globs.v + o * numY * numX; // [outer][numY][numX]
 	REAL *a = globs.a
 			+ o * numY * numY;
 	REAL *b = globs.b
 			+ o * numY * numY;
 	REAL *c = globs.c
 			+ o * numY * numY;
-	REAL *y = globs.y
-			+ o * numY * numY;
-	//REAL *y_trans = globs.y_trans
-	//		+ o * numY * numY;
 	
-	REAL this_myDyy[3];
-	this_myDyy[0] = globs.myDyy[j*4 + 0];
-	this_myDyy[1] = globs.myDyy[j*4 + 1];
-	this_myDyy[2] = globs.myDyy[j*4 + 2];
+	//REAL this_myDyy[3];
+	//this_myDyy[0] = globs.myDyy[j*4 + 0];
+	//this_myDyy[1] = globs.myDyy[j*4 + 1];
+	//this_myDyy[2] = globs.myDyy[j*4 + 2];
 	
-	for(int i=0; i<numX; i++) { // here a, b, c should have size [numY]
+	//for(int i=0; i<numX; i++) { // here a, b, c should have size [numY]
+	for(int j=0; j<numY; j++) { // here a, b, c should have size [numY]
 	
 		REAL myVarY = globs.myVarY[i*globs.numY + j];
-		a[i*numY + j] = -0.5 * (0.5 * myVarY
-				* this_myDyy[0]);
-		b[i*numY + j] = dtInv - 0.5 * (0.5 * myVarY
-				* this_myDyy[1]);
-		c[i*numY + j] = -0.5 * (0.5 * myVarY
-				* this_myDyy[2]);
+		//a[j*numX + i] = -0.5 * (0.5 * myVarY
+		a[j*numX + i] = -0.5 * (0.5 * myVarY
+				* shared_myDyy[j*4 + 0]);
+		b[j*numX + i] = dtInv - 0.5 * (0.5 * myVarY
+				* shared_myDyy[j*4 + 1]);
+		c[j*numX + i] = -0.5 * (0.5 * myVarY
+				* shared_myDyy[j*4 + 2]);
 	}
+}
+
+__global__ void rollback3_1_kernel(unsigned int g, PrivGlobs &globs) {
+	unsigned numX = globs.numX;
+	unsigned numY = globs.numY;
+
+	unsigned int j = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int o = threadIdx.y + blockDim.y * blockIdx.y;
+	if (j >= globs.numY) return;
+	if (o >= globs.outer) return;
+
+	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
+
+	REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
+	REAL *v = globs.v + o * numY * numX; // [outer][numY][numX]
+	REAL *y = globs.y
+			+ o * numY * numY;
 	
 	//for(int j=0; j<numY; j++) {
 	for(int i=0; i<numX; i++) {
@@ -309,14 +329,14 @@ __global__ void rollback3_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	
 	REAL *myResult = globs.myResult + o * numY * numX;
 	REAL *a = globs.a
-			+ o * numY * numY
-			+ i * numY;
+			+ o * numY * numY;
+			//+ i * numY;
 	REAL *b = globs.b
-			+ o * numY * numY
-			+ i * numY;
+			+ o * numY * numY;
+			//+ i * numY;
 	REAL *c = globs.c
-			+ o * numY * numY
-			+ i * numY;
+			+ o * numY * numY;
+			//+ i * numY;
 	REAL *y = globs.y
 			+ o * numY * numY
 			+ i * numY;
@@ -328,10 +348,7 @@ __global__ void rollback3_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	//REAL *yy_trans = globs.yy_trans
 	//		+ o * numY * numY;
 	
-	// here yy should have size [numY]
-	d_tridag(a,b,c,y,numY,myResult + i*globs.numY,yy);
-	//d_tridag_2_trans(a,b,c,y,numY,myResult + i*numY,yy,i,numX,numY);
-	//d_tridag_trans(a_trans,b_trans,c_trans,y,numY,myResult + i*globs.numY,yy,i,numY);
+	d_tridag_3(a,b,c,y,numY,myResult + i*numY,yy,i,numX);
 }
 
 __global__ void optimized_transpose_kernel(
@@ -395,82 +412,7 @@ void setPayoff_host(PrivGlobs& globs) {
 	report_cuda_error("Two\n");
 }
 
-__device__ inline void d_tridag(
-	const REAL *a,   // size [n]
-	const REAL *b,   // size [n]
-	const REAL *c,   // size [n]
-	const REAL *r,   // size [n]
-	const int n,
-	REAL *u,   // size [n]
-	REAL *uu   // size [n] temporary
-) {
-	int i;
-	REAL beta;
-	
-	u[0] = r[0];
-	uu[0] = b[0];
-	
-	for(i=1; i<n; i++) {
-		beta  = a[i] / uu[i-1];
-		
-		uu[i] = b[i] - beta*c[i-1];
-		u[i]  = r[i] - beta*u[i-1];
-	}
-
-#if 1
-	// X) this is a backward recurrence
-	u[n-1] = u[n-1] / uu[n-1];
-	for(i=n-2; i>=0; i--) {
-		u[i] = (u[i] - c[i]*u[i+1]) / uu[i];
-	}
-#else
-	// Hint: X) can be written smth like (once you make a non-constant)
-	for(i=0; i<n; i++) {
-		a[i] = u[n-1-i];
-	}
-	a[0] = a[0] / uu[n-1];
-	for(i=1; i<n; i++) {
-		a[i] = (a[i] - c[n-1-i]*a[i-1]) / uu[n-1-i];
-	}
-	for(i=0; i<n; i++) {
-		u[i] = a[n-1-i];
-	}
-#endif
-}
-__device__ inline void d_tridag_trans(
-	const REAL *a,   // size [n]
-	const REAL *b,   // size [n]
-	const REAL *c,   // size [n]
-	const REAL *r,   // size [n]
-	const int n,
-	REAL *u,   // size [n]
-	REAL *uu,   // size [n] temporary
-	int j,
-	int numY
-) {
-	int i;
-	REAL beta;
-	
-	u[0] = r[0];
-	uu[0] = b[0];
-	
-	for(i=1; i<n; i++) {
-		//beta  = a[i*numY + j] / uu[(i-1)*numY + j];
-		beta  = a[i*numY + j] / uu[i-1];
-		
-		//uu[i*numY + j] = b[i*numY + j] - beta*c[(i-1)*numY + j];
-		uu[i] = b[i*numY + j] - beta*c[(i-1)*numY + j];
-		u[i]  = r[i] - beta*u[i-1];
-	}
-
-	//u[n-1] = u[n-1] / uu[(i-1)*numY + j];
-	u[n-1] = u[n-1] / uu[i-1];
-	for(i=n-2; i>=0; i--) {
-		//u[i] = (u[i] - c[i*numY + j]*u[i+1]) / uu[i*numY + j];
-		u[i] = (u[i] - c[i*numY + j]*u[i+1]) / uu[i];
-	}
-}
-__device__ inline void d_tridag_2_trans(
+__device__ inline void d_tridag_2(
 	const REAL *a,   // size [n]
 	const REAL *b,   // size [n]
 	const REAL *c,   // size [n]
@@ -489,56 +431,56 @@ __device__ inline void d_tridag_2_trans(
 	uu[0] = b[0];
 	
 	for(i=1; i<n; i++) {
-		//beta  = a[i*numY + j] / uu[(i-1)*numY + j];
 		beta  = a[i*numY + j] / uu[i-1];
 		
-		//uu[i*numY + j] = b[i*numY + j] - beta*c[(i-1)*numY + j];
 		uu[i] = b[i*numY + j] - beta*c[(i-1)*numY + j];
-		//u[i]  = r[i] - beta*u[i-1];
 		u[i*numY]  = r[i*numY] - beta*u[(i-1)*numY];
 	}
 
-	//u[n-1] = u[n-1] / uu[(i-1)*numY + j];
-	//u[n-1] = u[n-1] / uu[i-1];
 	u[(n-1)*numY] = u[(n-1)*numY] / uu[i-1];
 	for(i=n-2; i>=0; i--) {
-		//u[i] = (u[i] - c[i*numY + j]*u[i+1]) / uu[i*numY + j];
 		u[i*numY] = (u[i*numY] - c[i*numY + j]*u[(i+1)*numY]) / uu[i];
 	}
+	
+	/*/ Hint: X) can be written smth like (once you make a non-constant)
+	for(i=0; i<n; i++) {
+		a[i] = u[n-1-i];
+	}
+	a[0] = a[0] / uu[n-1];
+	for(i=1; i<n; i++) {
+		a[i] = (a[i] - c[n-1-i]*a[i-1]) / uu[n-1-i];
+	}
+	for(i=0; i<n; i++) {
+		u[i] = a[n-1-i];
+	}
+	*/
 }
-__device__ inline void d_tridag_trans_u(
+__device__ inline void d_tridag_3(
 	const REAL *a,   // size [n]
 	const REAL *b,   // size [n]
 	const REAL *c,   // size [n]
-	const REAL *r,   // size [n]
+	const REAL *r,   // size [n] //TRANS
 	const int n,
-	REAL *u,   // size [n]
+	REAL *u,   // size [n] //TRANS
 	REAL *uu,   // size [n] temporary
-	int j,
-	int numX,
-	int numY
+	int i,
+	int numX
 ) {
-	int i;
 	REAL beta;
 	
 	u[0] = r[0];
 	uu[0] = b[0];
 	
-	int u_span = numY;
-	for(i=1; i<n; i++) {
-		//beta  = a[i*numY + j] / uu[(i-1)*numY + j];
-		beta  = a[i*numY + j] / uu[i-1];
+	for(int j=1; j<n; j++) {
+		beta  = a[j*numX + i] / uu[j-1];
 		
-		//uu[i*numY + j] = b[i*numY + j] - beta*c[(i-1)*numY + j];
-		uu[i] = b[i*numY + j] - beta*c[(i-1)*numY + j];
-		u[i*u_span + j]  = r[i*u_span] - beta*u[(i-1)*u_span + j];
+		uu[j] = b[j*numX + i] - beta*c[(j-1)*numX + i];
+		u[j]  = r[j] - beta*u[j-1];
 	}
-
-	//u[n-1] = u[n-1] / uu[(i-1)*numY + j];
-	u[(n-1)*u_span + j] = u[(n-1)*u_span + j] / uu[i-1];
-	for(i=n-2; i>=0; i--) {
-		//u[i] = (u[i] - c[i*numY + j]*u[i+1]) / uu[i*numY + j];
-		u[i*u_span + j] = (u[i*u_span + j] - c[i*numY + j]*u[(i+1)*u_span + j]) / uu[i];
+	
+	u[n-1] = u[n-1] / uu[n-1];
+	for(int j=n-2; j>=0; j--) {
+		u[j] = (u[j] - c[j*numX + i]*u[j+1]) / uu[j];
 	}
 }
 
@@ -591,9 +533,11 @@ void rollback2_tridag_host (unsigned int g, PrivGlobs &globs) {
 }
 
 void rollback3_host (unsigned int g, PrivGlobs &globs) {
-	dim3 blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
 	dim3 threads = dim3(32,32);
-	rollback3_kernel <<< blocks, threads >>> (g, *globs.d_globs);
+	dim3 blocks = dim3(ceil((globs.numX+0.f)/32),ceil((globs.outer+0.f)/32));
+	rollback3_0_kernel <<< blocks, threads, sizeof(REAL)*globs.numY*4 >>> (g, *globs.d_globs);
+	blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
+	rollback3_1_kernel <<< blocks, threads >>> (g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback3");
 }

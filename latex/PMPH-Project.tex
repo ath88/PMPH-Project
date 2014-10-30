@@ -91,6 +91,8 @@ implementation is not catastrophically wrong, but does not prove that it is
 correct. We can make the same assumption about correctness as with the 
 original implementation.
 
+TODO heat dissipation algorithm, if its wrong, it really explodes after some time
+
 \subsection{Speedup}
 While this implementation is parallel across multiple processors, measuring the
 time taking of specific parts of the implementation is harder. We can, however, 
@@ -120,6 +122,8 @@ corresponding to the number of iterations on the outer loop. This means that
 we will only get a theoretical max speedup of factor 16. The overhead from 
 creating processes, sharing result memory, and only having 16 concurrently 
 running processes makes the results seem probable.
+
+TODO elaborate on expectations of hyperthreading
 
 
 \section{CUDA Implementation}

@@ -42,8 +42,9 @@ struct PrivGlobs {
 	//vector<vector<REAL> > myDyy;  // [numY][4]
 	
 	// vectors for rollback()
-	REAL *u; // [outer][y][numY][numX]
-	REAL *v; // [outer][y][numX][numY]
+	REAL *u;
+	REAL *v;
+	REAL *u_trans;
 	REAL *a; // [outer][y][max(numX,numY)]
 	REAL *b; // [outer][y][max(numX,numY)]
 	REAL *c; // [outer][y][max(numX,numY)]
@@ -86,8 +87,9 @@ struct PrivGlobs {
 		this->myVarY = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
 		
 		
-		this->u = (REAL *) malloc(sizeof(REAL) * outer * numY * numX);
+		this->u = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		this->v = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
+		this->u_trans = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
 		
 		// note: assuming that: numY == max(numX, numY)
 		this->a = (REAL *) malloc(sizeof(REAL) * outer * numY * numY);
@@ -127,8 +129,9 @@ struct PrivGlobs {
 		cudaMalloc(&this->device->myResult, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->myVarX, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->myVarY, sizeof(REAL) * outer * numX * numY);
-		cudaMalloc(&this->device->u, sizeof(REAL) * outer * numY * numX);
+		cudaMalloc(&this->device->u, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->v, sizeof(REAL) * outer * numX * numY);
+		cudaMalloc(&this->device->u_trans, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->a, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->b, sizeof(REAL) * outer * numY * numY);
 		cudaMalloc(&this->device->c, sizeof(REAL) * outer * numY * numY);
@@ -154,6 +157,7 @@ struct PrivGlobs {
 		cudaFree(this->device->myVarY);
 		cudaFree(this->device->u);
 		cudaFree(this->device->v);
+		cudaFree(this->device->u_trans);
 		cudaFree(this->device->a);
 		cudaFree(this->device->b);
 		cudaFree(this->device->c);

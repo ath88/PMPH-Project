@@ -210,16 +210,16 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs) {
 			+ o * numY * numY;
 			//+ j * numY; // [outer][y][max(numX,numY)]
 	
-	int this_index = j;
+	//int this_index = j;
 	for(int i=0; i<numX; i++) { // here a, b,c should have size [numX]
-		REAL myVarX = globs.myVarX[this_index];
-		a[this_index] = -0.5 * (0.5 * myVarX
+		REAL myVarX = globs.myVarX[i*globs.numY + j];
+		a[i*numY + j] = -0.5 * (0.5 * myVarX
 				* shared_myDxx[i*4 + 0]);
-		b[this_index] = dtInv - 0.5 * (0.5 * myVarX
+		b[i*numY + j] = dtInv - 0.5 * (0.5 * myVarX
 				* shared_myDxx[i*4 + 1]);
-		c[this_index] = -0.5 * (0.5 * myVarX
+		c[i*numY + j] = -0.5 * (0.5 * myVarX
 				* shared_myDxx[i*4 + 2]);
-		this_index += numY;
+		//this_index += numY;
 	}
 }
 __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {

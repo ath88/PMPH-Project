@@ -12,6 +12,7 @@
 \usepackage{courier}
 \usepackage{listings}
 \usepackage[pdftex,colorlinks=true]{hyperref}
+\usepackage{graphics}
 
 \begin{document}
 \title{\Title}
@@ -35,23 +36,31 @@ the running time of tridag\_0 is part of the running time of rollback\_2, which
 in time is part of rollback, and so forth. The time of the outer loop is the 
 total running time of the entire calculation. 
 
+\autoref{table:origtime} is based on a single execution of the implementation, 
+but we have visually verified that it is a statistically average example. 
+
+The table clearly shows what parts of the implementation we should parallelize.
+TODO explain more
+
 \begin{table}[h]
 \centering
-\begin{tabular}{|l|l|l|l|l|}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|r|r|r|r|r|r|}
 \hline
-Name \textbackslash\ Dataset & Small      & Medium     & Large        & Avg. Percentage \\ \hline
-outer                        & 2050766 us & 4240619 us & 187729378 us & 100\%           \\ \hline
-\ \ init                     & 171 us     & 238 us     & 2068 us      & \\ \hline
-\ \ setPayoff                & 174 us     & 363 us     & 10651 us     & \\ \hline
-\ \ updateParams             & 1199969 us & 2492123 us & 106691216 us & \\ \hline
-\ \ rollback                 & 839027 us  & 1729438 us & 80412624 us  & \\ \hline
-\ \ \ \ rollback\_0          & 117198 us  & 246938 us  & 11824914 us  & \\ \hline
-\ \ \ \ rollback\_1          & 111773 us  & 236186 us  & 12284147 us  & \\ \hline
-\ \ \ \ rollback\_2          & 286646 us  & 585957 us  & 25915774 us  & \\ \hline
-\ \ \ \ \ \ tridag\_0        & 203364 us  & 421277 us  & 18500994 us  & \\ \hline
-\ \ \ \ rollback\_3          & 304214 us  & 627087 us  & 28554403 us  & \\ \hline
-\ \ \ \ \ \ tridag\_1        & 200502 us  & 416905 us  & 18612169 us  & \\ \hline
+Name \textbackslash\ Dataset & Small      & Small \% & Medium     & Medium \% & Large        & Large \% \\ \hline
+outer                        & 2050766 us & 100.00\% & 4240619 us & 100.00\%  & 187729378 us & 100.00\% \\ \hline
+\ \ init                     & 171 us     & 0.00\%   & 238 us     & 0.00\%    & 2068 us      & 0.00\%   \\ \hline
+\ \ setPayoff                & 174 us     & 0.00\%   & 363 us     & 0.00\%    & 10651 us     & 0.01\%   \\ \hline
+\ \ updateParams             & 1199969 us & 58.15\%  & 2492123 us & 58.77\%   & 106691216 us & 56.83\%  \\ \hline
+\ \ rollback                 & 839027 us  & 40.91\%  & 1729438 us & 40.78\%   & 80412624 us  & 42.83\%  \\ \hline
+\ \ \ \ rollback\_0          & 117198 us  & 5.71\%   & 246938 us  & 5.82\%    & 11824914 us  & 6.30\%   \\ \hline
+\ \ \ \ rollback\_1          & 111773 us  & 5.45\%   & 236186 us  & 5.56\%    & 12284147 us  & 6.54\%   \\ \hline
+\ \ \ \ rollback\_2          & 286646 us  & 13.98\%  & 585957 us  & 13.82\%   & 25915774 us  & 13.80\%  \\ \hline
+\ \ \ \ \ \ tridag\_0        & 203364 us  & 9.92\%   & 421277 us  & 9.93\%    & 18500994 us  & 9.86\%   \\ \hline
+\ \ \ \ rollback\_3          & 304214 us  & 14.83\%  & 627087 us  & 14.79\%   & 28554403 us  & 15.21\%  \\ \hline
+\ \ \ \ \ \ tridag\_1        & 200502 us  & 9.78\%   & 416905 us  & 9.83\%    & 18612169 us  & 9.91\%   \\ \hline
 \end{tabular}
+}
 \caption{Approximate timings of the original implementation}
 \label{table:origtime}
 \end{table}
@@ -73,6 +82,9 @@ own struct, and therefore does not read and write to the same memory. This is
 a method known as privatization, and allows us to parallelize the entire loop
 with an OpenMP pragma directive.
 
+TODO write about why we can do this, ie. no accumulation in struct or nothin'
+
+
 \subsection{Validation}
 The implementation validates against all 3 datasets. This shows that our
 implementation is not catastrophically wrong, but does not prove that it is
@@ -82,15 +94,58 @@ original implementation.
 \subsection{Speedup}
 While this implementation is parallel across multiple processors, measuring the
 time taking of specific parts of the implementation is harder. We can, however, 
-compare with the total running time, and the results can be seen in TODO FIGURE.
+compare with the total running time, and the results can be seen in 
+\autoref{table:omptime}.
 
+\begin{table}[h]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|r|r|r|}
+\hline
+Speedup \textbackslash\ Dataset & Small      & Medium     & Large        \\ \hline
+Original                        & 2050766 us & 4240619 us & 187729378 us \\ \hline
+OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hline
+Speedup                         & 11.11      & 18.02      & 20.52        \\ \hline
+\end{tabular}
+}
+\caption{Approximate timings of the original implementation}
+\label{table:omptime}
+\end{table}
+
+\subsection{Conclusion}
+When using OpenMP, we utilize the machines 16 cores with dual hyperthreading. 
+This will give us a theoretical max speedup of factor 32. When running the small 
+dataset, the OpenMP pragma we used will only create 16 processes on 16 cores
+corresponding to the number of iterations on the outer loop. This means that 
+we will only get a theoretical max speedup of factor 16. The overhead from 
+creating processes, sharing result memory, and only having 16 concurrently 
+running processes makes the results seem probable.
 
 
 \section{CUDA Implementation}
 
 \subsection{Transformations}
+TODO indexing into arrays, dont do it like Cosmin wants us to. Esben?
+
+
 \subsection{Validation}
 \subsection{Speedup}
+\begin{table}[h]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|r|r|r|}
+\hline
+Speedup \textbackslash\ Dataset & Small      & Medium     & Large        \\ \hline
+Original                        & 2050766 us & 4240619 us & 187729378 us \\ \hline
+OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hline
+CUDA                            &  us  &  us  &  us   \\ \hline
+Speedup                         & 11.11      & 18.02      & 20.52        \\ \hline
+\end{tabular}
+}
+\caption{Approximate timings of the original implementation}
+\label{table:omptime}
+\end{table}
+\subsection{Conclusion}
 
 \newpage
 \section{Appendices}

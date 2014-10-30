@@ -50,8 +50,8 @@ __global__ void setPayoff_kernel(PrivGlobs& globs) {
 }
 
 __global__ void updateParams_kernel(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs &globs) {
-	unsigned int o = threadIdx.x + blockDim.x * blockIdx.x;
-	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
+	unsigned int o = threadIdx.y + blockDim.y * blockIdx.y;
+	unsigned int j = threadIdx.x + blockDim.x * blockIdx.x;
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 
@@ -61,15 +61,16 @@ __global__ void updateParams_kernel(const unsigned g, const REAL alpha, const RE
 	REAL *myVarX = globs.myVarX + o * numX * numY;
 	REAL *myVarY = globs.myVarY + o * numX * numY;
 
+	REAL constant_addition = 2.0
+			* (globs.myY[j] - 0.5*nu*nu*globs.myTimeline[g]);
 	for(unsigned i=0;i<globs.numX;++i) {
-		myVarX[i*globs.numY + j] = exp(2.0 * (
-				beta*log(globs.myX[i])
-				+ globs.myY[j]
-				- 0.5*nu*nu*globs.myTimeline[g]));
-		myVarY[i*globs.numY + j] = exp(2.0 * (
-				alpha*log(globs.myX[i])
-				+ globs.myY[j]
-				- 0.5*nu*nu*globs.myTimeline[g])); // nu*nu
+		REAL constant_multiplication = 2.0 * log(globs.myX[i]);
+		myVarX[i*globs.numY + j] = exp(
+				beta * constant_multiplication
+				+ constant_addition);
+		myVarY[i*globs.numY + j] = exp(
+				alpha * constant_multiplication
+				+ constant_addition); // nu*nu
 	} 
 }
 
@@ -134,40 +135,46 @@ __global__ void rollback1_kernel(unsigned int g, PrivGlobs &globs) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	unsigned int j = threadIdx.y + blockDim.y * blockIdx.y;
-	unsigned int o = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int j = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int o = threadIdx.y + blockDim.y * blockIdx.y;
 	if (j >= globs.numY) return;
 	if (o >= globs.outer) return;
 	
 	REAL *myResult = globs.myResult + o * numY * numX;
 	REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
 	REAL *v = globs.v + o * numY * numX; // [outer][numY][numX]
-
+	
+	REAL this_myDyy[3];
+	this_myDyy[0] = globs.myDyy[j*4 + 0];
+	this_myDyy[1] = globs.myDyy[j*4 + 1];
+	this_myDyy[2] = globs.myDyy[j*4 + 2];
+	
+	int this_index = j;
 	for(int i=0; i<numX; i++) {
 		v[i*numY + j] = 0.0;
-		REAL myVarY = globs.myVarY[i*globs.numY + j];
-		int myResultId = i*globs.numY + j;
+		REAL myVarY = globs.myVarY[this_index];
 		REAL myResultSub[3] = {
-				myResult[myResultId - 1],
-				myResult[myResultId],
-				myResult[myResultId + 1],
+				myResult[this_index - 1],
+				myResult[this_index],
+				myResult[this_index + 1],
 		};
 		
 		if(j > 0) {
 			v[i*numY + j] += (0.5
-					* myVarY * globs.myDyy[j*4 + 0])
+					* myVarY * this_myDyy[0])
 					* myResultSub[0];
 		}
 		v[i*numY + j] += (0.5
-				* myVarY * globs.myDyy[j*4 + 1])
+				* myVarY * this_myDyy[1])
 				* myResultSub[1];
 		if(j < numY - 1) {
 			v[i*numY + j] += (0.5
-					* myVarY * globs.myDyy[j*4 + 2])
+					* myVarY * this_myDyy[2])
 					* myResultSub[2];
 		}
-		//u[j*numX + i] += v[i*numY + j];
 		u[i*numY + j] += v[i*numY + j];
+		
+		this_index += numY;
 	}
 }
 
@@ -397,7 +404,7 @@ __global__ void transpose_kernel(unsigned int g, PrivGlobs &globs) {
 
 void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs& globs) {
 	TIMER_START(updateParams);
-	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
+	dim3 blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
 	dim3 threads = dim3(32,32);
 	updateParams_kernel <<< blocks, threads >>> (g, alpha, beta, nu, *globs.d_globs);
 	cudaDeviceSynchronize();
@@ -572,16 +579,20 @@ void rollback0_host (unsigned int g, PrivGlobs &globs) {
 			ceil((float) globs.numY / ROLLBACK_BLOCK_SIZE),
 			ceil((float) globs.outer / ROLLBACK_BLOCK_SIZE));
 	dim3 threads = dim3(ROLLBACK_BLOCK_SIZE, ROLLBACK_BLOCK_SIZE);
-	rollback0_kernel <<< blocks, threads, sizeof(REAL)*globs.numY*4 >>> (g, *globs.d_globs);
+	rollback0_kernel <<< blocks, threads, sizeof(REAL)*globs.numY*4 >>>
+			(g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback0");
 }
 
 #define BLOCK_SIZE 32
 void rollback1_host (unsigned int g, PrivGlobs &globs) {
-	dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
-	dim3 threads = dim3(32,32);
-	rollback1_kernel <<< blocks, threads >>> (g, *globs.d_globs);
+	dim3 blocks = dim3(
+			ceil((float) globs.numY / ROLLBACK_BLOCK_SIZE),
+			ceil((float) globs.outer / ROLLBACK_BLOCK_SIZE));
+	dim3 threads = dim3(ROLLBACK_BLOCK_SIZE, ROLLBACK_BLOCK_SIZE);
+	rollback1_kernel <<< blocks, threads, sizeof(REAL)*globs.numY*4 >>>
+			(g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback1");
 }

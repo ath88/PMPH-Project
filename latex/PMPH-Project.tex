@@ -10,10 +10,38 @@
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage{courier}
-\usepackage{listings}
+% \usepackage{listings}
 \usepackage[pdftex,colorlinks=true]{hyperref}
 \usepackage{graphics}
 \usepackage{todonotes}
+
+\usepackage{color}
+\definecolor{ublue}{rgb}{0,0,0.5}
+\definecolor{ugreen}{rgb}{0,0.5,0}
+\definecolor{ured}{rgb}{0.5,0,0}
+\definecolor{ugrey}{rgb}{0.5,0.5,0.5}
+
+\usepackage{listings}
+\lstset{
+	language=C,			% choose the language of the code
+	% numbers=left,				% where to put the line-numbers
+	numberstyle=\tiny,			% line-numbers font size
+	stepnumber=1,				% the step between two line-numbers
+%	numbersep=10pt,				% how far the line-numbers are from the code
+	basicstyle= \ttfamily \footnotesize, %\small %\scriptsize, % the size of the fonts for the code
+%	breaklines=true,
+	tabsize=4,
+	identifierstyle=\color{black},
+	keywordstyle=\color{ublue}\bf,
+	stringstyle=\color{ured},
+	commentstyle=\color{ugreen},
+	showstringspaces=false,		% underline spaces within strings
+	xleftmargin=.1\textwidth, % left margin
+	xrightmargin=.1\textwidth, % right margin
+%	inputencoding=utf8x,
+%	extendedchars= true
+%	frame=single,
+}
 
 \begin{document}
 \title{\Title}
@@ -29,20 +57,20 @@ it against the original implementation and the OpenMP implementation.
 \section{Sequential Implementation}
 First we will profile the original implementation, and showcase our findings.
 This will help us determine what we definitely should parallelize, and what is
-less relevant. 
+less relevant.
 
 \subsection{Timing}
 We have made approximate timing of specific parts of the original 
 implementation, to get an overview 
 of where we can achieve relevant speedups according to Amdahl's Law. The results
-can be seen in \autoref{table:origtime}. In the table, there are indentations 
-in the first column indicating what parts are inside other parts. For example,
+can be seen in \autoref{table:origtime}. In the table, the indentations 
+in the first column indicate what parts are inside other parts. For example,
 the running time of tridag\_0 is part of the running time of rollback\_2, which
 in turn is part of rollback, and so forth. The time of the outer loop is the 
 total running time of the entire calculation. 
 
 \autoref{table:origtime} is based on a single execution of the implementation, 
-but we have visually verified that it is a statistically average example. 
+but we have visually verified that it is a average example. 
 The table clearly shows what parts of the implementation we should parallelize.
 We see that, combined, the update\_Params function and the rollback function take approximately $56.83\%+42.83\%=99.66\%$ of the execution time.
 
@@ -92,9 +120,9 @@ Basically all of the program runs inside the outer-loop.
 In this loop, first there is some initialization, and then we enter the timeline-loop in which the update\_Params function and the rollback function are called.
 Here, the update\_Params function consists of a nested for-loop (an y-loop inside an x-loop), and the rollback function runs several combinations of the x-loop and the y-loop, some of which call the tridag function.
 
-So to our efforts have been put into finding out which of these loops are (or can be made) parallel, and in the case of the CUDA implementation we have distributed and interchanged the loops in order to create perfect loop-nests, which then correspond to kernels.
+So our efforts have been put into finding out which of these loops are (or can be made) parallel, and, in the case of the CUDA implementation, distributing and interchanging the loops in order to create perfect loop-nests, which then correspond to kernels.
 
-TODO explain more
+// TODO explain more ??
 
 \subsection{Validation}
 The original implementation validates against all 3 datasets. This is expected,
@@ -109,27 +137,27 @@ of our implementation, and finally we will compare it to the original
 implementation.
 
 \subsection{Privatization}
-The outer loop in the original implementation uses the same allocation of a C 
+The outer-loop in the original implementation uses the same C 
 struct for each
-iteration of the loop. This, in turn, makes it inherently not parallel, since,
-if executed in parallel, all iterations would be writing to the same memory. 
-We can, however, privatize the struct, such that all iterations allocate their
-own struct, and therefore does not read and write to the same memory. This is 
-a method known as privatization, and allows us to parallelize the entire loop
+iteration of the loop. This, in turn, makes it inherently non-parallel, since,
+if executed in parallel, all iterations would be writing to the same memory location. 
+We can, however, give each iteration its own copy of the
+struct, so that the iterations do not read and write to the same memory location. This is 
+known as privatization, and allows us to parallelize the entire loop
 with an OpenMP pragma directive. 
 
-While privatization does work in this case, this is not immediately clear. It is
-important to note that this would not have worked, if there had been some kind
-of accumulator in the struct, used by the next iteration. The only way to ensure
+While privatization does work in this case, it is not immediately clear why it does. It is
+important to note that it would not have worked if there had been a dependency between the iterations,
+e.g., an accumulator that was used by the next iteration. The only way to ensure
 that this is not the case, is to look through the code and take note of which 
-variables are read, and realize that they are all previously written in the 
+variables are read, and verify that they are all previously written in the 
 same iteration, such that nothing is carried from each loop iteration.
 
 When telling OpenMP how to parallelize, we decided to go with static scheduling.
-This means that all iterations are distributed during compliation. This gives
-less overhead, compared to dynamic scheduling, which happens at runtime. We do
+This means that all iterations are distributed before executing the loop. This gives
+less overhead, compared to dynamic scheduling, which adjusts to the workload at runtime. We do
 this because we know that each iteration of the outer loop yields the same
-amount of work, such that no iteration takes much longer time that the others.
+amount of work, such that no iteration takes much longer time than the others.
 Had they been of different size, then static scheduling would lead to load 
 imbalance, and incur extra overhead due to significant idling on some cores.
 
@@ -175,11 +203,11 @@ Speedup                         & 11.11      & 18.02      & 20.52        \\ \hli
 \end{table}
 
 \subsection{Conclusion}
-When using OpenMP, we utilize the machines 16 cores with dual hyperthreading. 
-This will give us a theoretical max speedup of factor 32. When running the small 
+When using OpenMP, we utilize the machines 16 cores with hyperthreading. 
+This will give us a maximum realistic speedup of factor 32. When running the small 
 dataset, the OpenMP pragma we used will only create 16 processes on 16 cores
 corresponding to the number of iterations on the outer loop. This means that 
-we will only get a theoretical max speedup of factor 16, on the small dataset. 
+we will only get a max speedup of factor 16, on the small dataset. 
 
 While using 16 cores, we expect a speedup of slight amount short of 16. Then we 
 gain a little extra from hyperthreading, if we have more than 16 processes. 
@@ -195,7 +223,7 @@ implementation and the OpenMP implementation.
 
 \subsection{Transformations}
 We did various transpormations on the original code. Here we explain what we 
-did, and in approximately chronological order.
+did in approximately chronological order.
 
 \subsubsection{Array Expansion}
 The outer loop is not parallel. Previously we remedied this by privatization,

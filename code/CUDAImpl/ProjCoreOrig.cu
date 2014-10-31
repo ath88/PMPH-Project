@@ -94,7 +94,6 @@ __global__ void rollback0_kernel(unsigned int g, PrivGlobs &globs) {
 	
 	REAL *myResult = globs.myResult + o * numY * numX;
 	REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
-	//REAL *u = globs.u_trans + o * numY * numY; // [outer][numY][numX]
 	__syncthreads();
 	
 	int this_index = j;
@@ -195,15 +194,9 @@ __global__ void rollback2_kernel(unsigned int g, PrivGlobs &globs) {
 	REAL dtInv = 1.0 / (globs.myTimeline[g+1] - globs.myTimeline[g]);
 	
 	//REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
-	REAL *a = globs.a
-			+ o * numY * numY;
-			//+ j * numY; // [outer][y][max(numX,numY)]
-	REAL *b = globs.b
-			+ o * numY * numY;
-			//+ j  * numY; // [outer][y][max(numX,numY)]
-	REAL *c = globs.c
-			+ o * numY * numY;
-			//+ j * numY; // [outer][y][max(numX,numY)]
+	REAL *a = globs.a + o * numY * numY;
+	REAL *b = globs.b + o * numY * numY;
+	REAL *c = globs.c + o * numY * numY;
 	
 	//int this_index = j;
 	for(int i=0; i<numX; i++) { // here a, b,c should have size [numX]
@@ -229,16 +222,12 @@ __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
 	REAL *a = globs.a
 			+ o * numY * numY;
-			//+ j * numY; // [outer][y][max(numX,numY)]
 	REAL *b = globs.b
 			+ o * numY * numY;
-			//+ j  * numY; // [outer][y][max(numX,numY)]
 	REAL *c = globs.c
 			+ o * numY * numY;
-			//+ j * numY; // [outer][y][max(numX,numY)]
 	REAL *yy = globs.yy
 			+ o * numY * numY;
-			//+ j * numY; // [outer][y][max(numX,numY)]
 	
 	d_tridag_2(a,b,c,u,numX,u,yy,j,numX,numY);
 }
@@ -271,16 +260,9 @@ __global__ void rollback3_0_kernel(unsigned int g, PrivGlobs &globs) {
 	REAL *c = globs.c
 			+ o * numY * numY;
 	
-	//REAL this_myDyy[3];
-	//this_myDyy[0] = globs.myDyy[j*4 + 0];
-	//this_myDyy[1] = globs.myDyy[j*4 + 1];
-	//this_myDyy[2] = globs.myDyy[j*4 + 2];
-	
-	//for(int i=0; i<numX; i++) { // here a, b, c should have size [numY]
 	for(int j=0; j<numY; j++) { // here a, b, c should have size [numY]
 	
 		REAL myVarY = globs.myVarY[i*globs.numY + j];
-		//a[j*numX + i] = -0.5 * (0.5 * myVarY
 		a[j*numX + i] = -0.5 * (0.5 * myVarY
 				* shared_myDyy[j*4 + 0]);
 		b[j*numX + i] = dtInv - 0.5 * (0.5 * myVarY
@@ -303,13 +285,9 @@ __global__ void rollback3_1_kernel(unsigned int g, PrivGlobs &globs) {
 
 	REAL *u = globs.u + o * numY * numY; // [outer][numY][numX]
 	REAL *v = globs.v + o * numY * numX; // [outer][numY][numX]
-	REAL *y = globs.y
-			+ o * numY * numY;
+	REAL *y = globs.y + o * numY * numY;
 	
-	//for(int j=0; j<numY; j++) {
 	for(int i=0; i<numX; i++) {
-		//y_trans[j*numY + i] = dtInv*u[j*numX + i] - 0.5*v[i*numY + j];
-		//y[j] = dtInv*u[j*numX + i] - 0.5*v[i*numY + j];
 		y[i*numY + j] = dtInv*u[i*numY + j] - 0.5*v[i*numY + j];
 	}
 }
@@ -317,46 +295,29 @@ __global__ void rollback3_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	unsigned numX = globs.numX;
 	unsigned numY = globs.numY;
 	
-	//unsigned int rollback_i = threadIdx.y + blockDim.y * blockIdx.y;
 	unsigned int i = threadIdx.x + blockDim.x * blockIdx.x;
-	//unsigned int j = threadIdx.x + blockDim.x * blockIdx.x;
-	//unsigned int tridag_i = i % numY;
-	//unsigned int rollback_i = i;// / numY;
-	//unsigned int rollback_i = i;
 	unsigned int o = threadIdx.y + blockDim.y * blockIdx.y;
 	if (i >= globs.numX) return;
 	if (o >= globs.outer) return;
 	
-	//REAL *myResult = globs.myResult + o * numY * numX;
 	REAL *myResult = globs.myResult_trans + o * numY * numX;
-	REAL *a = globs.a
-			+ o * numY * numY;
-			//+ i * numY;
-	REAL *b = globs.b
-			+ o * numY * numY;
-			//+ i * numY;
-	REAL *c = globs.c
-			+ o * numY * numY;
-			//+ i * numY;
-	//REAL *y = globs.y
-	//		+ o * numY * numY;
-	REAL *y = globs.y_trans
-			+ o * numY * numY;
-	//REAL *y_trans = globs.y_trans
-	//		+ o * numY * numY;
-	REAL *yy = globs.yy
-			+ o * numY * numY;
-			//+ i * numY;
-	//REAL *yy_trans = globs.yy_trans
-	//		+ o * numY * numY;
+	REAL *a = globs.a + o * numY * numY;
+	REAL *b = globs.b + o * numY * numY;
+	REAL *c = globs.c + o * numY * numY;
+	REAL *y = globs.y_trans + o * numY * numY;
+	REAL *yy = globs.yy + o * numY * numY;
 	
 	d_tridag_3(a,b,c,y,numY,myResult,yy,i,numX,numY);
-	//d_tridag_3(a,b,c,y,numY,myResult + i*numY,yy,i,numX);
 }
-
-__global__ void optimized_transpose_kernel(
-		REAL *result, REAL *input, int width, int height) {
+__global__ void transpose_kernel(
+		REAL *result, REAL *input, int width, int height, int outer) {
 	__shared__ REAL shared_tile[TILE_DIMENSION * TILE_DIMENSION];
+	
+	const unsigned int o = blockIdx.z;
+	if(o >= outer) {
+		return;
+	}
+	const unsigned int outer_offset = o * width * height;
 	
 	const unsigned int tile_i =
 			blockIdx.x;
@@ -388,11 +349,12 @@ __global__ void optimized_transpose_kernel(
 	
 	if(i_tileflipped < height && j_tileflipped < width) {
 		shared_tile[id_in_tile_transposed] =
-				input[tile_offset + offset_in_tile];
+				input[outer_offset + tile_offset + offset_in_tile];
 	}
 	__syncthreads();
 	if(j < height && i < width) {
-		result[tile_offset_transposed + offset_in_tile_transposed] =
+		result[outer_offset
+				+ tile_offset_transposed + offset_in_tile_transposed] =
 				shared_tile[id_in_tile];
 	}
 }
@@ -510,7 +472,6 @@ void report_cuda_error(char* id) {
 
 #define ROLLBACK_BLOCK_SIZE 32
 void rollback0_host (unsigned int g, PrivGlobs &globs) {
-	//dim3 blocks = dim3(ceil((globs.outer+0.f)/32),ceil((globs.numY+0.f)/32));
 	dim3 blocks = dim3(
 			ceil((float) globs.numY / ROLLBACK_BLOCK_SIZE),
 			ceil((float) globs.outer / ROLLBACK_BLOCK_SIZE));
@@ -571,38 +532,30 @@ void rollback3_tridag_host (unsigned int g, PrivGlobs &globs) {
 void transpose_before_tridag_3 (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(
 			ceil((float) globs.numY / TILE_DIMENSION),
-			ceil((float) globs.numY / TILE_DIMENSION)
-				);
-	dim3 threads = dim3(TILE_DIMENSION, TILE_DIMENSION);
-	for(int o = 0; o < globs.outer; o += 1) {
-		int offset = o * globs.numY * globs.numY;
-		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->y_trans + offset,
-				globs.device->y + offset,
-				globs.numY, globs.numY);
-	}
+			ceil((float) globs.numY / TILE_DIMENSION),
+			ceil((float) globs.outer)
+			);
+	dim3 threads = dim3(TILE_DIMENSION, TILE_DIMENSION, 1);
+	transpose_kernel <<< blocks, threads >>>
+				(globs.device->y_trans,
+				globs.device->y,
+				globs.numY, globs.numY, globs.outer);
+	
 	cudaDeviceSynchronize();
 	report_cuda_error("transpose");
 }
 void transpose_end (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(
 			ceil((float) globs.numX / TILE_DIMENSION),
-			ceil((float) globs.numY / TILE_DIMENSION)
-			//1, 1
+			ceil((float) globs.numY / TILE_DIMENSION),
+			ceil((float) globs.outer)
 			);
 	dim3 threads = dim3(TILE_DIMENSION, TILE_DIMENSION);
-	//dim3 threads = dim3(1, 1);
-	for(int o = 0; o < globs.outer; o += 1) {
-		int offset = o * globs.numX * globs.numY;
-		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->myResult + offset,
-				globs.device->myResult_trans + offset,
-				globs.numX, globs.numY);
-		//transposeNaive <<< blocks, threads >>>
-		//		(*globs.d_globs, offset,
-		//		globs.numY, globs.numX);
-	}
-	cudaDeviceSynchronize();
+	transpose_kernel <<< blocks, threads >>>
+				(globs.device->myResult,
+				globs.device->myResult_trans,
+				globs.numX, globs.numY, globs.outer);
+				cudaDeviceSynchronize();
 	report_cuda_error("transpose");
 }
 

@@ -7,21 +7,135 @@
 
 #define TILE_DIMENSION 32
 
-TIMER_DEFINE(run_OrigCPU);
-	TIMER_DEFINE(updateParams);
-	TIMER_DEFINE(rollback);
-		TIMER_DEFINE(rollback_0);
-		TIMER_DEFINE(rollback_1);
-		TIMER_DEFINE(rollback_2);
-		TIMER_DEFINE(transpose);
-		TIMER_DEFINE(rollback_2_tridag);
-		TIMER_DEFINE(rollback_3);
-		TIMER_DEFINE(rollback_3_tridag);
+TIMER_DEFINE(warmup);
+TIMER_DEFINE(total);
+	TIMER_DEFINE(init);
+	TIMER_DEFINE(timeline);
+		TIMER_DEFINE(updateParams);
+		TIMER_DEFINE(rollback);
+			TIMER_DEFINE(rollback_0);
+			TIMER_DEFINE(rollback_1);
+			TIMER_DEFINE(rollback_2);
+			TIMER_DEFINE(transpose);
+			TIMER_DEFINE(rollback_2_tridag);
+			TIMER_DEFINE(rollback_3);
+			TIMER_DEFINE(rollback_3_tridag);
+	TIMER_DEFINE(result);
 
 void report_cuda_error(char*);
 
 __device__ inline void d_tridag_2(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*, int, int, int);
 __device__ inline void d_tridag_3(const REAL*, const REAL*, const REAL*, const REAL*, const int, REAL*, REAL*, int, int, int);
+
+// kernel for warming up the GPU (we have no idea why this is necessary, but it is indeed significant!
+__global__ void warmup(){};
+
+__global__ void initGrid_kernel(const REAL s0, const REAL alpha, const REAL nu,const REAL t, PrivGlobs &globs) {
+        int numX = globs.numX;
+        int numY = globs.numY;
+        int numT = globs.numT;
+
+        for(unsigned i=0; i<numT; ++i) {
+                globs.myTimeline[i] = t*i/(numT-1);
+        }
+
+        const REAL stdX = 20.0*alpha*s0*sqrt(t);
+        const REAL dx = stdX/numX;
+        globs.myXindex = static_cast<unsigned>(s0/dx) % numX;
+
+
+        for(unsigned i=0;i<numX;++i) {
+                globs.myX[i] = i*dx - globs.myXindex*dx + s0;
+        }
+
+        const REAL stdY = 10.0*nu*sqrt(t);
+        const REAL dy = stdY/numY;
+        const REAL logAlpha = log(alpha);
+        globs.myYindex = static_cast<unsigned>(numY/2.0);
+
+        for(unsigned i=0;i<numY;++i) {
+                globs.myY[i] = i*dy - globs.myYindex*dy + logAlpha;
+        }
+}
+
+__global__ void initOperator_kernel(PrivGlobs &globs) {
+        //const unsigned n = x.size();
+
+        {
+        REAL *x = globs.myX;
+        REAL *Dxx = globs.myDxx;
+        int n = globs.numX;
+
+
+        REAL dxl, dxu;
+
+        // lower boundary
+        dxl = 0.0;
+        dxu = x[1] - x[0];
+
+        Dxx[0*4 + 0] =  0.0;
+        Dxx[0*4 + 1] =  0.0;
+        Dxx[0*4 + 2] =  0.0;
+        Dxx[0*4 + 3] =  0.0;
+
+        // standard case
+        for(unsigned i=1;i<n-1;i++) {
+                dxl = x[i] - x[i-1];
+                dxu = x[i+1] - x[i];
+
+                Dxx[i*4 + 0] =  2.0/dxl/(dxl+dxu);
+                Dxx[i*4 + 1] = -2.0*(1.0/dxl + 1.0/dxu)/(dxl+dxu);
+                Dxx[i*4 + 2] =  2.0/dxu/(dxl+dxu);
+                Dxx[i*4 + 3] =  0.0;
+        }
+
+        // upper boundary
+        dxl = x[n-1] - x[n-2];
+        dxu = 0.0;
+
+        Dxx[(n-1)*4 + 0] = 0.0;
+        Dxx[(n-1)*4 + 1] = 0.0;
+        Dxx[(n-1)*4 + 2] = 0.0;
+        Dxx[(n-1)*4 + 3] = 0.0;
+        }
+ 
+        {
+        REAL *x = globs.myY;
+        REAL *Dxx = globs.myDyy;
+        int n = globs.numY;
+
+        REAL dxl, dxu;
+
+        // lower boundary
+        dxl = 0.0;
+        dxu = x[1] - x[0];
+
+        Dxx[0*4 + 0] =  0.0;
+        Dxx[0*4 + 1] =  0.0;
+        Dxx[0*4 + 2] =  0.0;
+        Dxx[0*4 + 3] =  0.0;
+
+        // standard case
+        for(unsigned i=1;i<n-1;i++) {
+                dxl = x[i] - x[i-1];
+                dxu = x[i+1] - x[i];
+
+                Dxx[i*4 + 0] =  2.0/dxl/(dxl+dxu);
+                Dxx[i*4 + 1] = -2.0*(1.0/dxl + 1.0/dxu)/(dxl+dxu);
+                Dxx[i*4 + 2] =  2.0/dxu/(dxl+dxu);
+                Dxx[i*4 + 3] =  0.0;
+        }
+
+        // upper boundary
+        dxl = x[n-1] - x[n-2];
+        dxu = 0.0;
+
+        Dxx[(n-1)*4 + 0] = 0.0;
+        Dxx[(n-1)*4 + 1] = 0.0;
+        Dxx[(n-1)*4 + 2] = 0.0;
+        Dxx[(n-1)*4 + 3] = 0.0;
+        }
+}
 
 // can only run up to 1024 threads, since it doesnt use blockIdx and blockDim
 __global__ void copyResult_kernel(REAL *d_res, PrivGlobs &globs) {
@@ -542,7 +656,7 @@ void transpose_before_tridag_3 (unsigned int g, PrivGlobs &globs) {
 				globs.numY, globs.numY, globs.outer);
 	
 	cudaDeviceSynchronize();
-	report_cuda_error("transpose");
+	report_cuda_error("transpose_before");
 }
 void transpose_end (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(
@@ -556,7 +670,19 @@ void transpose_end (unsigned int g, PrivGlobs &globs) {
 				globs.device->myResult_trans,
 				globs.numX, globs.numY, globs.outer);
 				cudaDeviceSynchronize();
-	report_cuda_error("transpose");
+	report_cuda_error("transpose_after");
+}
+
+void initGrid_host(const REAL s0, const REAL alpha, const REAL nu,const REAL t, PrivGlobs &globs) {
+        initGrid_kernel <<< 1, 1 >>> (s0, alpha, nu, t, *globs.d_globs);
+        cudaDeviceSynchronize();
+        report_cuda_error("initGrid");
+}
+
+void initOperator_host(PrivGlobs &globs) {
+        initOperator_kernel <<< 1, 1 >>> (*globs.d_globs);
+        cudaDeviceSynchronize();
+        report_cuda_error("initOperator");
 }
 
 void run_OrigCPU(
@@ -571,7 +697,10 @@ void run_OrigCPU(
 		const REAL &beta,
 		REAL *res // [outer] RESULT
 ) {
-	TIMER_INIT(run_OrigCPU);
+	TIMER_INIT(warmup);
+	TIMER_INIT(total);
+	TIMER_INIT(init);
+	TIMER_INIT(timeline);
 	TIMER_INIT(updateParams);
 	TIMER_INIT(rollback);
 	TIMER_INIT(rollback_0);
@@ -581,23 +710,28 @@ void run_OrigCPU(
 	TIMER_INIT(rollback_2_tridag);
 	TIMER_INIT(rollback_3);
 	TIMER_INIT(rollback_3_tridag);
-	
-	PrivGlobs globs;
-	globs.init(numX, numY, numT, outer);
-	
-	initGrid(s0,alpha,nu,t, numX, numY, numT, globs);
-	initOperator(globs.myX, globs.myDxx, globs.numX);
-	initOperator(globs.myY, globs.myDyy, globs.numY);
-	
-	globs.cuda_init();
-	report_cuda_error("Init\n");
-	reportMemoryUsage();
-	
-	globs.copyToDevice();
-	report_cuda_error("CopyToDevice\n");
-	setPayoff_host(globs);
-	
-	TIMER_START(run_OrigCPU);
+	TIMER_INIT(result);
+
+	TIMER_START(warmup);
+	warmup <<< 1,1 >>> ();
+	cudaDeviceSynchronize();
+	TIMER_STOP(warmup);
+
+	TIMER_START(total);
+	TIMER_START(init);
+        PrivGlobs globs;
+        globs.init(numX, numY, numT, outer);
+
+        initGrid_host(s0, alpha, nu, t, globs);
+        initOperator_host(globs);
+
+        reportMemoryUsage();
+	TIMER_STOP(init);
+	TIMER_START(timeline);
+
+
+        setPayoff_host(globs);
+
 	for(int t = globs.numT-2; t>=0; --t) {
 		//printf("%d / %d\n", count++, globs.numT-2);
 		updateParams_host(t,alpha,beta,nu,globs);
@@ -652,7 +786,8 @@ void run_OrigCPU(
 		TIMER_STOP(rollback);
 		//cudaDeviceSynchronize();
 	}
-	TIMER_STOP(run_OrigCPU);
+	TIMER_STOP(timeline);
+	TIMER_START(result);
 
 	// arrange and copy back data
 	REAL *d_res;
@@ -660,9 +795,15 @@ void run_OrigCPU(
 	copyResult_kernel <<< 1, globs.outer >>> (d_res, *globs.d_globs);
 	cudaMemcpy(res, d_res, sizeof(REAL) * outer, cudaMemcpyDeviceToHost);
 
+	TIMER_STOP(result);
 	globs.free();
+	TIMER_STOP(total);
 	
-	TIMER_REPORT(run_OrigCPU);
+	TIMER_REPORT(warmup);
+	TIMER_REPORT(total);
+	TIMER_GROUP();
+	TIMER_REPORT(init);
+	TIMER_REPORT(timeline);
 	TIMER_GROUP();
 	TIMER_REPORT(updateParams);
 	TIMER_REPORT(rollback);
@@ -676,6 +817,8 @@ void run_OrigCPU(
 	TIMER_REPORT(transpose);
 	TIMER_GROUP_END();
 	TIMER_GROUP_END();
+	TIMER_REPORT(result);
+	TIMER_GROUP_END();
 	
 	int serial_time = 0;
 	if(outer == 16) {
@@ -687,7 +830,7 @@ void run_OrigCPU(
 	}
 	if(serial_time != 0) {
 		printf("Speedup vs serial: %f\n",
-				(float) serial_time / TIMER_MU_S(run_OrigCPU));
+				(float) serial_time / TIMER_MU_S(total));
 	}
 }
 

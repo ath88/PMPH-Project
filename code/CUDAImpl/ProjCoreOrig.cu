@@ -6,6 +6,8 @@
 #include <cuda.h>
 
 #define TILE_DIMENSION 32
+#define ROLLBACK_BLOCK_SIZE 24
+#define TRIDAG_BLOCK_SIZE 32
 
 TIMER_DEFINE(warmup);
 TIMER_DEFINE(total);
@@ -472,26 +474,11 @@ __global__ void transpose_kernel(
 				shared_tile[id_in_tile];
 	}
 }
-#define NAIVE_TRANSPOSE_TILE_DIM 16
-__global__ void transposeNaive(PrivGlobs &globs, int offset, int width, int height)
-{
-	REAL *odata = globs.myResult + offset;
-	REAL *idata = globs.myResult_trans + offset;
-	
-	if(threadIdx.x == 0 && threadIdx.y == 0) {
-		for(int i=0; i<width; i++) {
-			for(int j=0; j<height; j++) {
-				odata[i*height + j] = idata[j*width + i];
-			}
-		}
-	}
-}
-
 
 void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs& globs) {
 	TIMER_START(updateParams);
-	dim3 blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
-	dim3 threads = dim3(32,32);
+	dim3 blocks = dim3(ceil((globs.numY+0.f)/TILE_DIMENSION),ceil((globs.outer+0.f)/TILE_DIMENSION));
+	dim3 threads = dim3(TILE_DIMENSION, TILE_DIMENSION);
 	updateParams_kernel <<< blocks, threads >>> (g, alpha, beta, nu, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("Two\n");
@@ -521,16 +508,21 @@ __device__ inline void d_tridag_2(
 	u[0 + j] = r[0 + j];
 	uu[j] = b[0];
 	
+	int this_index = numY + j;
 	for(i=1; i<n; i++) {
-		beta  = a[i*numY + j] / uu[(i-1)*numY + j];
+		beta  = a[this_index] / uu[this_index - numY];
 		
-		uu[i*numY + j] = b[i*numY + j] - beta*c[(i-1)*numY + j];
-		u[i*numY + j]  = r[i*numY + j] - beta*u[(i-1)*numY + j];
+		uu[this_index] = b[this_index] - beta*c[this_index - numY];
+		u[this_index]  = r[this_index] - beta*u[this_index - numY];
+		
+		this_index += numY;
 	}
-
-	u[(n-1)*numY + j] = u[(n-1)*numY + j] / uu[(i-1)*numY + j];
+	
+	this_index -= numY;
+	u[this_index] = u[this_index] / uu[this_index];
 	for(i=n-2; i>=0; i--) {
-		u[i*numY + j] = (u[i*numY + j] - c[i*numY + j]*u[(i+1)*numY + j]) / uu[i*numY + j];
+		this_index -= numY;
+		u[this_index] = (u[this_index] - c[this_index]*u[this_index + numY]) / uu[this_index];
 	}
 	
 	/*/ Hint: X) can be written smth like (once you make a non-constant)
@@ -563,17 +555,36 @@ __device__ inline void d_tridag_3(
 	u[i] = r[i];
 	uu[i] = b[0];
 	
+	int this_index = numX + i; // j*numX + i
 	for(int j=1; j<n; j++) {
-		beta  = a[j*numX + i] / uu[(j-1)*numY + i];
+		beta  = a[this_index] / uu[this_index - numX];
 		
-		uu[j*numY + i] = b[j*numX + i] - beta*c[(j-1)*numX + i];
-		u[j*numX + i]  = r[j*numY + i] - beta*u[(j-1)*numX + i];
+		uu[this_index] = b[this_index] - beta*c[this_index - numX];
+		u[this_index]  = r[j*numY + i] - beta*u[this_index - numX];
+		
+		this_index += numX;
 	}
 	
-	u[(n-1)*numX + i] = u[(n-1)*numX + 1] / uu[(n-1)*numY + i];
+	this_index -= numX;
+	u[this_index] = u[this_index] / uu[this_index];
 	for(int j=n-2; j>=0; j--) {
-		u[j*numX + i] = (u[j*numX + i] - c[j*numX + i]*u[(j+1)*numX + i]) / uu[j*numY + i];
+		this_index -= numX;
+		u[this_index] = (u[this_index] - c[this_index]*u[this_index + numX]) / uu[this_index];
 	}
+
+	//REAL a_flip[256];
+	//for(int j=0; j<n; j++) {
+	//	a_flip[j] = u[(n-1-j)*numX + i];
+	//}
+	//a_flip[0] = a_flip[0] / uu[(n-1)*numX + i];
+	//for(int j=1; j<n; j++) {
+	//	a_flip[j] = (a_flip[j] - c[(n-1-j)*numX + i]*a_flip[j-1]) / uu[(n-1-j)*numX + i];
+	//}
+	//
+	//for(int j=0; j<n; j++) {
+	//	u[j*numX + i] = a_flip[n-1-j];
+	//}
+	
 }
 
 void report_cuda_error(char* id) {
@@ -584,7 +595,6 @@ void report_cuda_error(char* id) {
 	}
 }
 
-#define ROLLBACK_BLOCK_SIZE 32
 void rollback0_host (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(
 			ceil((float) globs.numY / ROLLBACK_BLOCK_SIZE),
@@ -596,7 +606,6 @@ void rollback0_host (unsigned int g, PrivGlobs &globs) {
 	report_cuda_error("rollback0");
 }
 
-#define BLOCK_SIZE 32
 void rollback1_host (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(
 			ceil((float) globs.numY / ROLLBACK_BLOCK_SIZE),
@@ -609,36 +618,36 @@ void rollback1_host (unsigned int g, PrivGlobs &globs) {
 }
 
 void rollback2_host (unsigned int g, PrivGlobs &globs) {
-	dim3 blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
-	dim3 threads = dim3(32,32);
+	dim3 blocks = dim3(ceil((globs.numY+0.f)/ROLLBACK_BLOCK_SIZE),ceil((globs.outer+0.f)/ROLLBACK_BLOCK_SIZE));
+	dim3 threads = dim3(ROLLBACK_BLOCK_SIZE, ROLLBACK_BLOCK_SIZE);
 	rollback2_kernel <<< blocks, threads, sizeof(REAL)*globs.numY*4 >>> (g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback2");
 }
 void rollback2_tridag_host (unsigned int g, PrivGlobs &globs) {
-	dim3 blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
-	dim3 threads = dim3(32,32);
+	dim3 blocks = dim3(ceil((globs.numY+0.f)/TRIDAG_BLOCK_SIZE),ceil((globs.outer+0.f)/TRIDAG_BLOCK_SIZE));
+	dim3 threads = dim3(TRIDAG_BLOCK_SIZE, TRIDAG_BLOCK_SIZE);
 	rollback2_tridag_kernel <<< blocks, threads >>> (g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback2_tridag");
 }
 
 void rollback3_host (unsigned int g, PrivGlobs &globs) {
-	dim3 threads = dim3(32,32);
-	dim3 blocks = dim3(ceil((globs.numX+0.f)/32),ceil((globs.outer+0.f)/32));
+	dim3 threads = dim3(ROLLBACK_BLOCK_SIZE,ROLLBACK_BLOCK_SIZE);
+	dim3 blocks = dim3(ceil((globs.numX+0.f)/ROLLBACK_BLOCK_SIZE),ceil((globs.outer+0.f)/ROLLBACK_BLOCK_SIZE));
 	rollback3_0_kernel <<< blocks, threads, sizeof(REAL)*globs.numY*4 >>> (g, *globs.d_globs);
-	blocks = dim3(ceil((globs.numY+0.f)/32),ceil((globs.outer+0.f)/32));
+	blocks = dim3(ceil((globs.numY+0.f)/ROLLBACK_BLOCK_SIZE),ceil((globs.outer+0.f)/ROLLBACK_BLOCK_SIZE));
 	rollback3_1_kernel <<< blocks, threads >>> (g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback3");
 }
 void rollback3_tridag_host (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(
-			ceil((float) globs.numX / 32),
-			ceil((float) globs.outer / 32)
+			ceil((float) globs.numX / TRIDAG_BLOCK_SIZE),
+			ceil((float) globs.outer / TRIDAG_BLOCK_SIZE)
 			//ceil((float) globs.numY*globs.numY / 32)
 			);
-	dim3 threads = dim3(32, 32);
+	dim3 threads = dim3(TRIDAG_BLOCK_SIZE, TRIDAG_BLOCK_SIZE);
 	rollback3_tridag_kernel <<< blocks, threads >>> (g, *globs.d_globs);
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback3_tridag");

@@ -200,7 +200,9 @@ did, and in approximately chronological order.
 \subsubsection{Array Expansion}
 The outer loop is not parallel. Previously we remedied this by privatization,
 but this approach will not work here, since we aim to use the GPU, and will 
-need to keep the struct available across multiple CUDA kernels.
+need to keep the struct available across multiple CUDA kernels. Therefore we
+expand most of the arrays in the struct with O copies, where O corresponds to
+the number of iterations in the outer loop.
 
 
 adding another dimension to some of the arrays t

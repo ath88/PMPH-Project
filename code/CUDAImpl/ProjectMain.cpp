@@ -17,14 +17,14 @@ int main() {
 	const int Ps = 0;
 	REAL* res = (REAL*)malloc(OUTER_LOOP_COUNT*sizeof(REAL));
 	
-	{ // Original Program (Sequential CPU Execution)
+	{
 		cout<<"\n// Running CUDA Project Program"<<endl;
 		
 		unsigned long int elapsed = 0;
 		struct timeval t_start, t_end, t_diff;
 		gettimeofday(&t_start, NULL);
 		
-		run_OrigCPU( OUTER_LOOP_COUNT, NUM_X, NUM_Y, NUM_T, s0, t, alpha, nu, beta, res );
+		run( OUTER_LOOP_COUNT, NUM_X, NUM_Y, NUM_T, s0, t, alpha, nu, beta, res );
 		
 		gettimeofday(&t_end, NULL);
 		timeval_subtract(&t_diff, &t_end, &t_start);

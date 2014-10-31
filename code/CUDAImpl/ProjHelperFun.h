@@ -37,14 +37,12 @@ struct PrivGlobs {
 	REAL *myVarY; // [numX][numY]
 	
 	// operators
-	//vector<vector<REAL> > myDxx;  // [numX][4]
 	REAL *myDxx; // [numX][4]
 	REAL *myDyy; // [numY][4]
-	//vector<vector<REAL> > myDyy;  // [numY][4]
 	
 	// vectors for rollback()
-	REAL *u;
-	REAL *v;
+	REAL *u; // [outer][y][max(numX,numY)]
+	REAL *v; // [outer][x][max(numX,numY)]
 	REAL *a; // [outer][y][max(numX,numY)]
 	REAL *b; // [outer][y][max(numX,numY)]
 	REAL *c; // [outer][y][max(numX,numY)]
@@ -56,9 +54,6 @@ struct PrivGlobs {
 	struct PrivGlobs *device;
 	// device pointer to struct containing device pointers
 	struct PrivGlobs *d_globs;
-	
-	PrivGlobs() {
-	}
 	
 	void init(
 			const unsigned int &numX,
@@ -133,42 +128,7 @@ struct PrivGlobs {
 	}
 };
 
-
-void initGrid(const REAL s0, const REAL alpha, const REAL nu,const REAL t,
-		const unsigned numX, const unsigned numY, const unsigned numT, PrivGlobs& globs);
-
-void initOperator(const REAL *x, REAL *Dxx, const int n);
-
-void updateParams(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs &globs);
-
-void setPayoff(const REAL strike, PrivGlobs &globs);
-
-//void tridag(
-//	const vector<REAL> &a, // size [n]
-//	const vector<REAL> &b, // size [n]
-//	const vector<REAL> &c, // size [n]
-//	const vector<REAL> &r, // size [n]
-//	const int n,
-//	vector<REAL> &u, // size [n]
-//	vector<REAL> &uu // size [n] temporary
-//);
-
-void rollback(const unsigned g, PrivGlobs &globs);
-
-void value(
-		PrivGlobs globs,
-		const REAL s0,
-		const REAL strike, 
-		const REAL t, 
-		const REAL alpha, 
-		const REAL nu, 
-		const REAL beta,
-		const unsigned int numX,
-		const unsigned int numY,
-		const unsigned int numT
-);
-
-void run_OrigCPU(  
+void run(  
 		const unsigned int &outer,
 		const unsigned int &numX,
 		const unsigned int &numY,

@@ -30,6 +30,7 @@ struct PrivGlobs {
 	
 	// variable
 	REAL *myResult; // [outer][numX][numY]
+	REAL *myResult_trans; // [outer][numY][numX]
 	
 	// coeffs
 	REAL *myVarX; // [numX][numY]
@@ -83,6 +84,7 @@ struct PrivGlobs {
 		this->myTimeline = (REAL *) malloc(sizeof(REAL) * numT);
 		
 		this->myResult = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
+		this->myResult_trans = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
 		this->myVarX = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
 		this->myVarY = (REAL *) malloc(sizeof(REAL) * outer * numX * numY);
 		
@@ -127,6 +129,7 @@ struct PrivGlobs {
 		cudaMalloc(&this->device->myDyy, sizeof(REAL) * numY * 4);
 		cudaMalloc(&this->device->myTimeline, sizeof(REAL) * numT);
 		cudaMalloc(&this->device->myResult, sizeof(REAL) * outer * numX * numY);
+		cudaMalloc(&this->device->myResult_trans, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->myVarX, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->myVarY, sizeof(REAL) * outer * numX * numY);
 		cudaMalloc(&this->device->u, sizeof(REAL) * outer * numY * numY);
@@ -153,6 +156,7 @@ struct PrivGlobs {
 		cudaFree(this->device->myDyy);
 		cudaFree(this->device->myTimeline);
 		cudaFree(this->device->myResult);
+		cudaFree(this->device->myResult_trans);
 		cudaFree(this->device->myVarX);
 		cudaFree(this->device->myVarY);
 		cudaFree(this->device->u);
@@ -177,6 +181,7 @@ struct PrivGlobs {
 		cudaMemcpy(this->device->myDyy, this->myDyy, sizeof(REAL) * numY * 4, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->myTimeline, this->myTimeline, sizeof(REAL) * numT, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->myResult, this->myResult, sizeof(REAL) * outer * numX * numY, cudaMemcpyHostToDevice);
+		cudaMemcpy(this->device->myResult_trans, this->myResult_trans, sizeof(REAL) * outer * numX * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->myVarX, this->myVarX, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->myVarY, this->myVarY, sizeof(REAL) * numX * numY, cudaMemcpyHostToDevice);
 		cudaMemcpy(this->device->u, this->u, sizeof(REAL) * outer * numY * numX, cudaMemcpyHostToDevice);
@@ -195,6 +200,7 @@ struct PrivGlobs {
 		cudaMemcpy(this->myDyy, this->device->myDyy, sizeof(REAL) * numY * 4, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->myTimeline, this->device->myTimeline, sizeof(REAL) * numT, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->myResult, this->device->myResult, sizeof(REAL) * outer * numX * numY, cudaMemcpyDeviceToHost);
+		cudaMemcpy(this->myResult_trans, this->device->myResult_trans, sizeof(REAL) * outer * numX * numY, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->myVarX, this->device->myVarX, sizeof(REAL) * outer * numX * numY, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->myVarY, this->device->myVarY, sizeof(REAL) * outer * numX * numY, cudaMemcpyDeviceToHost);
 		cudaMemcpy(this->u, this->device->u, sizeof(REAL) * outer * numY * numY * numX, cudaMemcpyDeviceToHost);

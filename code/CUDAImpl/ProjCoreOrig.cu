@@ -240,7 +240,7 @@ __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 			+ o * numY * numY
 			+ j * numY; // [outer][y][max(numX,numY)]
 	
-	d_tridag_2(a,b,c,u + j,numX,u + j,yy,j,numX,numY);
+	d_tridag_2(a,b,c,u,numX,u,yy,j,numX,numY);
 }
 
 __global__ void rollback3_0_kernel(unsigned int g, PrivGlobs &globs) {
@@ -327,7 +327,8 @@ __global__ void rollback3_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	if (i >= globs.numX) return;
 	if (o >= globs.outer) return;
 	
-	REAL *myResult = globs.myResult + o * numY * numX;
+	//REAL *myResult = globs.myResult + o * numY * numX;
+	REAL *myResult = globs.myResult_trans + o * numY * numX;
 	REAL *a = globs.a
 			+ o * numY * numY;
 			//+ i * numY;
@@ -348,7 +349,8 @@ __global__ void rollback3_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	//REAL *yy_trans = globs.yy_trans
 	//		+ o * numY * numY;
 	
-	d_tridag_3(a,b,c,y,numY,myResult + i*numY,yy,i,numX);
+	d_tridag_3(a,b,c,y,numY,myResult,yy,i,numX);
+	//d_tridag_3(a,b,c,y,numY,myResult + i*numY,yy,i,numX);
 }
 
 __global__ void optimized_transpose_kernel(
@@ -393,9 +395,21 @@ __global__ void optimized_transpose_kernel(
 				shared_tile[id_in_tile];
 	}
 }
-__global__ void transpose_kernel(unsigned int g, PrivGlobs &globs) {
+#define NAIVE_TRANSPOSE_TILE_DIM 16
+__global__ void transposeNaive(PrivGlobs &globs, int offset, int width, int height)
+{
+	REAL *odata = globs.myResult + offset;
+	REAL *idata = globs.myResult_trans + offset;
 	
+	if(threadIdx.x == 0 && threadIdx.y == 0) {
+		for(int i=0; i<width; i++) {
+			for(int j=0; j<height; j++) {
+				odata[i*height + j] = idata[j*width + i];
+			}
+		}
+	}
 }
+
 
 void updateParams_host(const unsigned g, const REAL alpha, const REAL beta, const REAL nu, PrivGlobs& globs) {
 	TIMER_START(updateParams);
@@ -427,19 +441,19 @@ __device__ inline void d_tridag_2(
 	int i;
 	REAL beta;
 	
-	u[0] = r[0];
+	u[0 + j] = r[0 + j];
 	uu[0] = b[0];
 	
 	for(i=1; i<n; i++) {
 		beta  = a[i*numY + j] / uu[i-1];
 		
 		uu[i] = b[i*numY + j] - beta*c[(i-1)*numY + j];
-		u[i*numY]  = r[i*numY] - beta*u[(i-1)*numY];
+		u[i*numY + j]  = r[i*numY + j] - beta*u[(i-1)*numY + j];
 	}
 
-	u[(n-1)*numY] = u[(n-1)*numY] / uu[i-1];
+	u[(n-1)*numY + j] = u[(n-1)*numY + j] / uu[i-1];
 	for(i=n-2; i>=0; i--) {
-		u[i*numY] = (u[i*numY] - c[i*numY + j]*u[(i+1)*numY]) / uu[i];
+		u[i*numY + j] = (u[i*numY + j] - c[i*numY + j]*u[(i+1)*numY + j]) / uu[i];
 	}
 	
 	/*/ Hint: X) can be written smth like (once you make a non-constant)
@@ -468,19 +482,19 @@ __device__ inline void d_tridag_3(
 ) {
 	REAL beta;
 	
-	u[0] = r[0];
+	u[i] = r[0];
 	uu[0] = b[0];
 	
 	for(int j=1; j<n; j++) {
 		beta  = a[j*numX + i] / uu[j-1];
 		
 		uu[j] = b[j*numX + i] - beta*c[(j-1)*numX + i];
-		u[j]  = r[j] - beta*u[j-1];
+		u[j*numX + i]  = r[j] - beta*u[(j-1)*numX + i];
 	}
 	
-	u[n-1] = u[n-1] / uu[n-1];
+	u[(n-1)*numX + i] = u[(n-1)*numX + 1] / uu[n-1];
 	for(int j=n-2; j>=0; j--) {
-		u[j] = (u[j] - c[j*numX + i]*u[j+1]) / uu[j];
+		u[j*numX + i] = (u[j*numX + i] - c[j*numX + i]*u[(j+1)*numX + i]) / uu[j];
 	}
 }
 
@@ -552,34 +566,23 @@ void rollback3_tridag_host (unsigned int g, PrivGlobs &globs) {
 	cudaDeviceSynchronize();
 	report_cuda_error("rollback3_tridag");
 }
-void transpose_host (unsigned int g, PrivGlobs &globs) {
+void transpose_end (unsigned int g, PrivGlobs &globs) {
 	dim3 blocks = dim3(
 			ceil((float) globs.numY / TILE_DIMENSION),
-			ceil((float) globs.numY / TILE_DIMENSION)
+			ceil((float) globs.numX / TILE_DIMENSION)
+			//1, 1
 			);
 	dim3 threads = dim3(TILE_DIMENSION, TILE_DIMENSION);
+	//dim3 threads = dim3(1, 1);
 	for(int o = 0; o < globs.outer; o += 1) {
 		int offset = o * globs.numY * globs.numX;
 		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->u_trans + offset, globs.device->u + offset,
+				(globs.device->myResult + offset,
+				globs.device->myResult_trans + offset,
 				globs.numY, globs.numX);
-		
-		offset = o * globs.numY * globs.numY;
-		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->a_trans + offset, globs.device->a + offset,
-				globs.numY, globs.numY);
-		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->b_trans + offset, globs.device->b + offset,
-				globs.numY, globs.numY);
-		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->c_trans + offset, globs.device->c + offset,
-				globs.numY, globs.numY);
-		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->y_trans + offset, globs.device->y + offset,
-				globs.numY, globs.numY);
-		optimized_transpose_kernel <<< blocks, threads >>>
-				(globs.device->yy_trans + offset, globs.device->yy + offset,
-				globs.numY, globs.numY);
+		//transposeNaive <<< blocks, threads >>>
+		//		(*globs.d_globs, offset,
+		//		globs.numY, globs.numX);
 	}
 	cudaDeviceSynchronize();
 	report_cuda_error("transpose");
@@ -680,10 +683,6 @@ void run_OrigCPU(
 		rollback2_host(t, globs);
 		TIMER_STOP(rollback_2);
 		
-		//TIMER_START(transpose);
-		//transpose_host(t, globs);
-		//TIMER_STOP(transpose);
-		
 		TIMER_START(rollback_2_tridag);
 		rollback2_tridag_host(t, globs);
 		TIMER_STOP(rollback_2_tridag);
@@ -698,7 +697,11 @@ void run_OrigCPU(
 		TIMER_START(rollback_3_tridag);
 		rollback3_tridag_host(t, globs);
 		TIMER_STOP(rollback_3_tridag);
-
+		
+		TIMER_START(transpose);
+		transpose_end(t, globs);
+		TIMER_STOP(transpose);
+		
 		TIMER_STOP(rollback);
 		//cudaDeviceSynchronize();
 	}
@@ -720,10 +723,10 @@ void run_OrigCPU(
 	TIMER_REPORT(rollback_0);
 	TIMER_REPORT(rollback_1);
 	TIMER_REPORT(rollback_2);
-	TIMER_REPORT(transpose);
 	TIMER_REPORT(rollback_2_tridag);
 	TIMER_REPORT(rollback_3);
 	TIMER_REPORT(rollback_3_tridag);
+	TIMER_REPORT(transpose);
 	TIMER_GROUP_END();
 	TIMER_GROUP_END();
 	

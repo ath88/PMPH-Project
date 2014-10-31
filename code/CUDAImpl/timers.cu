@@ -23,7 +23,7 @@ int timeval_add_(
 }
 
 unsigned long int timeval_get_mu_s(struct timeval *t) {
-	return t->tv_sec * 1e6 + t->tv_usec;
+	return (t->tv_sec * 1e6 + t->tv_usec)/COUNT;
 }
 
 void timers_init() {

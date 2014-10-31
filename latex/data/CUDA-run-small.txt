@@ -3,26 +3,23 @@ cat ../Data/Small/input.data ../Data/Small/output.data | ./runproject 2> Debug.t
 // Running CUDA Project Program
 Trying to malloc ~21MiB on device
 Memory usage: 116MiB (base 83MiB, ours 33MiB) / 3071MiB
-warmup                     1053813 microseconds
-total                       147857 microseconds
-  init                        2211 microseconds
-  timeline                  144916 microseconds
-    updateParams              9583 microseconds
-    rollback                135314 microseconds
-      rollback_0              8719 microseconds
-      rollback_1              6793 microseconds
-      rollback_2              5401 microseconds
-      rollback_2_tridag       6769 microseconds
-      rollback_3             46411 microseconds
-      rollback_3_tridag      51241 microseconds
-      transpose               9942 microseconds
-  result                        36 microseconds
-Speedup vs serial: 13.526583
+warmup                       10856 microseconds
+total                       124677 microseconds
+  init                        2018 microseconds
+  timeline                  121933 microseconds
+    updateParams              8325 microseconds
+    rollback                113589 microseconds
+      rollback_0              7411 microseconds
+      rollback_1              5799 microseconds
+      rollback_2              4537 microseconds
+      rollback_2_tridag       6088 microseconds
+      rollback_3             33180 microseconds
+      rollback_3_tridag      47540 microseconds
+      transpose               8998 microseconds
+  result                        33 microseconds
+Speedup vs serial: 16.448631
 // OUTER=16, NUM_X=32, NUM_Y=256, NUM_T=90.
 1		// VALID   Result,
-1201699		// Runtime in microseconds,
-0		// CPU Threads,
-
 
  [ 0.030000 , 0.029000 , 0.028000 , 0.027000 , 0.026000 , 0.025104 , 0.024769 , 0.024435 , 0.024101 , 0.023766 , 0.023432 , 0.023098 , 0.022763 , 0.022429 , 0.022115 , 0.021808  ]	//PMPH Project Result
 

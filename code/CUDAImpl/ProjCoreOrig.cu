@@ -721,6 +721,8 @@ void run(
 	TIMER_INIT(rollback_3_tridag);
 	TIMER_INIT(result);
 
+	for(int i = 0; i < COUNT; i++) {
+
 	TIMER_START(warmup);
 	warmup <<< 1,1 >>> ();
 	cudaDeviceSynchronize();
@@ -797,6 +799,8 @@ void run(
 	globs.free();
 	TIMER_STOP(total);
 	
+	}
+
 	TIMER_REPORT(warmup);
 	TIMER_REPORT(total);
 	TIMER_GROUP();

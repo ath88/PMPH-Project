@@ -137,9 +137,11 @@ void writeStatsAndResult(   const bool& valid, const REAL* data,
     if(valid) { fprintf(stdout, "1\t\t// VALID   Result,\n"); } 
     else      { fprintf(stdout, "0\t\t// INVALID Result,\n"); }
 
+/*
     fprintf(stdout, "%ld\t\t// Runtime in microseconds,\n", elapsed);
     if(is_gpu) fprintf(stdout, "%d\t\t// GPU Threads,\n\n", P);
     else       fprintf(stdout, "%d\t\t// CPU Threads,\n\n", P);
+*/
 
     // write the result
     write_1Darr( data, static_cast<int>(outer), 

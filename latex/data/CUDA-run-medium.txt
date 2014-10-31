@@ -3,26 +3,23 @@ cat ../Data/Medium/input.data ../Data/Medium/output.data | ./runproject 2> Debug
 // Running CUDA Project Program
 Trying to malloc ~22MiB on device
 Memory usage: 119MiB (base 83MiB, ours 35MiB) / 3071MiB
-warmup                     1091371 microseconds
-total                       184189 microseconds
-  init                        2255 microseconds
-  timeline                  181061 microseconds
-    updateParams             14140 microseconds
-    rollback                166897 microseconds
-      rollback_0             18184 microseconds
-      rollback_1             14671 microseconds
-      rollback_2             10887 microseconds
-      rollback_2_tridag      11984 microseconds
-      rollback_3             53754 microseconds
-      rollback_3_tridag      44815 microseconds
-      transpose              12554 microseconds
-  result                        34 microseconds
-Speedup vs serial: 22.802664
+warmup                       10803 microseconds
+total                       155702 microseconds
+  init                        2014 microseconds
+  timeline                  152797 microseconds
+    updateParams             12822 microseconds
+    rollback                139953 microseconds
+      rollback_0             13988 microseconds
+      rollback_1             11301 microseconds
+      rollback_2              8014 microseconds
+      rollback_2_tridag      11177 microseconds
+      rollback_3             33997 microseconds
+      rollback_3_tridag      43584 microseconds
+      transpose              17853 microseconds
+  result                        36 microseconds
+Speedup vs serial: 27.235481
 // OUTER=32, NUM_X=47, NUM_Y=181, NUM_T=93.
 1		// VALID   Result,
-1275582		// Runtime in microseconds,
-0		// CPU Threads,
-
 
  [ 0.030000 , 0.029000 , 0.028321 , 0.027909 , 0.027497 , 0.027085 , 0.026673 , 0.026261 , 0.025872 , 0.025488 , 0.025104 , 0.024720 , 0.024336 , 0.023956 , 0.023601 , 0.023246 , 0.022891 , 0.022537 , 0.022182 , 0.021839 , 0.021512 , 0.021185 , 0.020858 , 0.020531 , 0.020204 , 0.019896 , 0.019596 , 0.019295 , 0.018995 , 0.018694 , 0.018394 , 0.018118  ]	//PMPH Project Result
 

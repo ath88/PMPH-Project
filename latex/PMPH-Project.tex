@@ -49,17 +49,20 @@
 \date{\today}
 \maketitle
 
+\todo{S V T}
 We have chosen to first reason about the original sequential implementation. 
 Next, we reason about and explain how we solved the OpenMP 
 implementation. Finally, we reason about our CUDA implementation, and measure
 it against the original implementation and the OpenMP implementation.
 
 \section{Sequential Implementation}
+\todo{S V T}
 First we will profile the original implementation, and showcase our findings.
 This will help us determine what we definitely should parallelize, and what is
 less relevant.
 
 \subsection{Timing}
+\todo{S V T}
 We have made approximate timing of specific parts of the original 
 implementation, to get an overview 
 of where we can achieve relevant speedups according to Amdahl's Law. The results
@@ -125,18 +128,21 @@ So our efforts have been put into finding out which of these loops are (or can b
 // TODO explain more ??
 
 \subsection{Validation}
+\todo{S V T}
 The original implementation validates against all 3 datasets. This is expected,
 since we did not change the original implementation. It is assumed that the 
 original implementation is therefore correct.
 
 
 \section{OpenMP Implementation}
+\todo{S V T}
 In this section we will first reason about how we transformed the sequential
 implementation to run on multiple cores. Then we will reason about the validity 
 of our implementation, and finally we will compare it to the original 
 implementation.
 
 \subsection{Privatization}
+\todo{S V T}
 The outer-loop in the original implementation uses the same C 
 struct for each
 iteration of the loop. This, in turn, makes it inherently non-parallel, since,
@@ -163,6 +169,7 @@ imbalance, and incur extra overhead due to significant idling on some cores.
 
 
 \subsection{Validation}
+\todo{S V T}
 The implementation validates against all 3 datasets. This shows that our
 implementation is not catastrophically wrong, but does not prove that it is
 correct. We can make the same assumption about correctness as with the 
@@ -182,6 +189,7 @@ the calculation.
 
 
 \subsection{Speedup}
+\todo{S V T}
 While this implementation is parallel across multiple processors, measuring the
 time taking of specific parts of the implementation is harder. We can, however, 
 compare with the total running time, and the results can be seen in 
@@ -203,6 +211,7 @@ Speedup                         & 11.11      & 18.02      & 20.52        \\ \hli
 \end{table}
 
 \subsection{Conclusion}
+\todo{S V T}
 When using OpenMP, we utilize the machines 16 cores with hyperthreading. 
 This will give us a maximum realistic speedup of factor 32. When running the small 
 dataset, the OpenMP pragma we used will only create 16 processes on 16 cores
@@ -216,16 +225,19 @@ This makes the results very much in line with our expectations.
 
 
 \section{CUDA Implementation}
+\todo{S V T}
 In this section we will first reason about how we transformed the sequential
 implementation to run on the GPU. Then we will reason about the validity of 
 our implementation, and finally we will compare it to the original 
 implementation and the OpenMP implementation.
 
 \subsection{Transformations}
+\todo{S V T}
 We did various transpormations on the original code. Here we explain what we 
 did in approximately chronological order.
 
 \subsubsection{Array Expansion}
+\todo{S V T}
 The outer loop is not parallel. Previously we remedied this by privatization,
 but this approach will not work here, since we aim to use the GPU, and will 
 need to keep the struct available across multiple CUDA kernels. Therefore we
@@ -243,20 +255,27 @@ array is correct, then we have successfully made the outer loop fully parallel.
 
 
 \subsubsection{Loop Interchange}
+\todo{S V T}
 switching outer and timeline loops
 
 \subsubsection{Loop Distribution}
+\todo{S V T}
 how we can run all iterations of parts of a parallel loop at the same time
 
 
 \subsubsection{Coalesced Data Access}
+\todo{S V T}
 Transposing, flipping axes, etc
 
 \subsubsection{Nudging around}
+\todo{S V T}
 \todo{indexing into arrays, dont do it like Cosmin wants us to. Esben?}
 
 \subsection{Validation}
+\todo{S V T}
+
 \subsection{Speedup}
+\todo{S V T}
 \begin{table}[h]
 \centering
 \resizebox{\columnwidth}{!}{%
@@ -273,7 +292,9 @@ Speedup                         & 11.11      & 18.02      & 20.52        \\ \hli
 \caption{Speedup comparison of the original implementation, the OpenMP implementation and the CUDA implementation}
 \label{table:cudatime}
 \end{table}
+
 \subsection{Conclusion}
+\todo{S V T}
 
 \newpage
 \section{Appendices}

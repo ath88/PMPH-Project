@@ -28,7 +28,7 @@ it against the original implementation and the OpenMP implementation.
 
 \section{Sequential Implementation}
 First we will profile the original implementation, and showcase our findings.
-This will help us determince what we definitely should parallelize, and what is
+This will help us determine what we definitely should parallelize, and what is
 less relevant. 
 
 \subsection{Timing}
@@ -131,7 +131,7 @@ less overhead, compared to dynamic scheduling, which happens at runtime. We do
 this because we know that each iteration of the outer loop yields the same
 amount of work, such that no iteration takes much longer time that the others.
 Had they been of different size, then static scheduling would lead to load 
-imbalance, and incur extra overhead due to siginificant idling on some cores.
+imbalance, and incur extra overhead due to significant idling on some cores.
 
 
 \subsection{Validation}
@@ -146,7 +146,7 @@ timesteps, then the results will be very off from the correct results. We have,
 however, created our own 'Tiny' dataset, which turned out to validate on some
 implementations, but fail on others.
 
-Another curiousity is that, if we skip writing to the result array, then there
+Another curiosity is that, if we skip writing to the result array, then there
 is a good chance that we allocated the exact same block of memory as the 
 previous execution, and that the results are already there. This happened to us
 at least once, and it can be fixed by 0-initializing the result array, prior to
@@ -202,10 +202,17 @@ The outer loop is not parallel. Previously we remedied this by privatization,
 but this approach will not work here, since we aim to use the GPU, and will 
 need to keep the struct available across multiple CUDA kernels. Therefore we
 expand most of the arrays in the struct with O copies, where O corresponds to
-the number of iterations in the outer loop.
+the number of iterations in the outer loop. The arrays we have expanded are:
+myResult, myVarX, myVarY, u, v, a, b, c, y and yy. Those we chosen because 
+they are all being written to inside the loop. The remaining arrays are only 
+read from, and will thus not result in a conflict. 
 
+After the array expansion,
+it was necessary to ensure that each iteration used its own part of the newly
+expanded array. This is done by indexing into the expanded arrays, based on the
+iteration counter, for each iteration. When the indexing into the expanded
+array is correct, then we have successfully made the outer loop fully parallel.
 
-adding another dimension to some of the arrays t
 
 \subsubsection{Loop Interchange}
 switching outer and timeline loops

@@ -237,8 +237,8 @@ __global__ void rollback2_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 			+ o * numY * numY;
 			//+ j * numY; // [outer][y][max(numX,numY)]
 	REAL *yy = globs.yy
-			+ o * numY * numY
-			+ j * numY; // [outer][y][max(numX,numY)]
+			+ o * numY * numY;
+			//+ j * numY; // [outer][y][max(numX,numY)]
 	
 	d_tridag_2(a,b,c,u,numX,u,yy,j,numX,numY);
 }
@@ -345,8 +345,8 @@ __global__ void rollback3_tridag_kernel(unsigned int g, PrivGlobs &globs) {
 	//REAL *y_trans = globs.y_trans
 	//		+ o * numY * numY;
 	REAL *yy = globs.yy
-			+ o * numY * numY
-			+ i * numY;
+			+ o * numY * numY;
+			//+ i * numY;
 	//REAL *yy_trans = globs.yy_trans
 	//		+ o * numY * numY;
 	
@@ -443,18 +443,18 @@ __device__ inline void d_tridag_2(
 	REAL beta;
 	
 	u[0 + j] = r[0 + j];
-	uu[0] = b[0];
+	uu[j] = b[0];
 	
 	for(i=1; i<n; i++) {
-		beta  = a[i*numY + j] / uu[i-1];
+		beta  = a[i*numY + j] / uu[(i-1)*numY + j];
 		
-		uu[i] = b[i*numY + j] - beta*c[(i-1)*numY + j];
+		uu[i*numY + j] = b[i*numY + j] - beta*c[(i-1)*numY + j];
 		u[i*numY + j]  = r[i*numY + j] - beta*u[(i-1)*numY + j];
 	}
 
-	u[(n-1)*numY + j] = u[(n-1)*numY + j] / uu[i-1];
+	u[(n-1)*numY + j] = u[(n-1)*numY + j] / uu[(i-1)*numY + j];
 	for(i=n-2; i>=0; i--) {
-		u[i*numY + j] = (u[i*numY + j] - c[i*numY + j]*u[(i+1)*numY + j]) / uu[i];
+		u[i*numY + j] = (u[i*numY + j] - c[i*numY + j]*u[(i+1)*numY + j]) / uu[i*numY + j];
 	}
 	
 	/*/ Hint: X) can be written smth like (once you make a non-constant)
@@ -485,18 +485,18 @@ __device__ inline void d_tridag_3(
 	REAL beta;
 	
 	u[i] = r[i];
-	uu[0] = b[0];
+	uu[i] = b[0];
 	
 	for(int j=1; j<n; j++) {
-		beta  = a[j*numX + i] / uu[j-1];
+		beta  = a[j*numX + i] / uu[(j-1)*numY + i];
 		
-		uu[j] = b[j*numX + i] - beta*c[(j-1)*numX + i];
+		uu[j*numY + i] = b[j*numX + i] - beta*c[(j-1)*numX + i];
 		u[j*numX + i]  = r[j*numY + i] - beta*u[(j-1)*numX + i];
 	}
 	
-	u[(n-1)*numX + i] = u[(n-1)*numX + 1] / uu[n-1];
+	u[(n-1)*numX + i] = u[(n-1)*numX + 1] / uu[(n-1)*numY + i];
 	for(int j=n-2; j>=0; j--) {
-		u[j*numX + i] = (u[j*numX + i] - c[j*numX + i]*u[(j+1)*numX + i]) / uu[j];
+		u[j*numX + i] = (u[j*numX + i] - c[j*numX + i]*u[(j+1)*numX + i]) / uu[j*numY + i];
 	}
 }
 

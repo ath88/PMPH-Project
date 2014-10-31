@@ -228,6 +228,9 @@ implementation to run on the GPU. Then we will reason about the validity of
 our implementation, and finally we will compare it to the original 
 implementation and the OpenMP implementation.
 
+\subsection{Angle of Approach}
+\todo{S V T, we need to explain why we only parallelize across O and Y}
+
 \subsection{Transformations}
 \todo{S V T}
 We did various transpormations on the original code. Here we explain what we 
@@ -253,7 +256,12 @@ array is correct, then we have successfully made the outer loop fully parallel.
 
 \subsubsection{Loop Interchange}
 \todo{S V T}
-switching outer and timeline loops
+At this point we have already achieved a parallel outer loop, and a sequential 
+timeline loop. Now we can do loop interchanging, such that the sequential 
+timeline loop becomes the outermost loop. This allows us to move the outer loop 
+inwards, such that the parallel loops are in close proximity to each other. 
+Later, this will allow us to easily create kernels, since this activity is 
+trivial when the loops are in close proximity.
 
 \subsubsection{Loop Distribution}
 \todo{S V T}

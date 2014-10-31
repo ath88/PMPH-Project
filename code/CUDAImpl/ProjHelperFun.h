@@ -33,8 +33,8 @@ struct PrivGlobs {
 	REAL *myResult_trans; // [outer][numY][numX]
 	
 	// coeffs
-	REAL *myVarX; // [numX][numY]
-	REAL *myVarY; // [numX][numY]
+	REAL *myVarX; // [outer][numX][numY]
+	REAL *myVarY; // [outer][numX][numY]
 	
 	// operators
 	REAL *myDxx; // [numX][4]

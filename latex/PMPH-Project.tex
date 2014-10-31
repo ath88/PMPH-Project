@@ -101,19 +101,19 @@ outer                        & 2050766 us & 100.00\% & 4240619 us & 100.00\%  & 
 \end{table}
 
 A bit of terminology: We refer to the following loop
-\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+\begin{lstlisting}[language=C]
   for(unsigned i = 0; i < outer; ++ i) { ... }
 \end{lstlisting}
 as just the \emph{outer}-loop. This loop
-\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+\begin{lstlisting}[language=C]
   for(int i = numT-2;i>=0;--i) { ... }
 \end{lstlisting}
 we call the \emph{timeline}-loop, where we have defined
-\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+\begin{lstlisting}[language=C]
   numT = globs.myTimeline.size().
 \end{lstlisting}
 And finally, these two loops
-\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+\begin{lstlisting}[language=C]
   for(i=0;i<numX;i++) { ... }
   for(j=0;j<numY;j++) { ... }
 \end{lstlisting}
@@ -145,7 +145,7 @@ implementation.
 \todo{S V T}
 The outer-loop in the original implementation uses the same C 
 struct for each
-iteration of the loop. This, in turn, makes it inherently non-parallel, since,
+iteration of the loop. This, in turn, makes the loop inherently non-parallel, since,
 if executed in parallel, all iterations would be writing to the same memory location. 
 We can, however, give each iteration its own copy of the
 struct, so that the iterations do not read and write to the same memory location. This is 
@@ -155,7 +155,7 @@ with an OpenMP pragma directive.
 While privatization does work in this case, it is not immediately clear why it does. It is
 important to note that it would not have worked if there had been a dependency between the iterations,
 e.g., an accumulator that was used by the next iteration. The only way to ensure
-that this is not the case, is to look through the code and take note of which 
+that this is not the case is to look through the code and take note of which 
 variables are read, and verify that they are all previously written in the 
 same iteration, such that nothing is carried from each loop iteration.
 
@@ -172,14 +172,11 @@ imbalance, and incur extra overhead due to significant idling on some cores.
 \todo{S V T}
 The implementation validates against all 3 datasets. This shows that our
 implementation is not catastrophically wrong, but does not prove that it is
-correct. We can make the same assumption about correctness as with the 
-original implementation.
+correct. However, we make the same assumption about correctness as with the 
+original implementation: The fact that it validates is sufficient evidence of correctness.
 
-We have shortly been looking into how the algorithm works, and what it does. We
-realize that if we have a wrong implementation, and a relatively high amount of 
-timesteps, then the results will be very off from the correct results. We have,
-however, created our own 'Tiny' dataset, which turned out to validate on some
-implementations, but fail on others.
+We have briefly looked at how the algorithm works and what it does. We
+realize that if we have a wrong implementation, then the results should differ quite much from the correct results, provided we have a relatively high amount of timesteps. We created our own 'Tiny' dataset and ran it on the original implementation to produce ``correct'' output data for it. It turned out that some implementations validated on this dataset, even though they actually failed on the other datasets.
 
 Another curiosity is that, if we skip writing to the result array, then there
 is a good chance that we allocated the exact same block of memory as the 
@@ -264,6 +261,22 @@ how we can run all iterations of parts of a parallel loop at the same time
 
 
 \subsubsection{Coalesced Data Access}
+After having parallelized the execution, the data accesses were a major bottleneck because the they were not coalesced.
+The problems were mostly $x$ by $y$ matrices that were traversed in the opposite order on the GPU because we have parallelized the $y$ loop.
+When traversing a matrix the access pattern should look like this (where \texttt{i} traverses the $x$-axis in the loop and \texttt{j} traverses the $y$-axis in parallel):
+\begin{lstlisting}[language=C]
+for(int i = 0; i < numX; i++) {
+	data[i*numY + j];
+}
+\end{lstlisting}
+
+Since most of the matrices are always traversed in the same direction, we could simply swap the indexing at every access to the matrix, resulting in major speedups without adding any code.
+
+Two matrices, namely \texttt{myResult} and \texttt{y} were, however, traversed in different directions at different places in the loop.
+For these, we inserted kernels to transpose them between kernel calls, so that each kernel can traverse the data in an optimal manner and still get the desired results.
+We used the tiled transpose kernel from assignment 3 for this (modified to take the outer loop into account), and the time spent transposing is much less than the time saved using coalesced access.
+Only on the small data set is the time spent transposing a dominating contribution to the total time.
+
 \todo{S V T}
 Transposing, flipping axes, etc
 

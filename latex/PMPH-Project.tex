@@ -286,9 +286,16 @@ Transposing, flipping axes, etc
 
 \subsection{Validation}
 \todo{S V T}
+This implementation validates against all 3 datasets. This shows that our
+implementation is not catastrophically wrong, but does not prove that it is
+correct. However, we make the same assumption about correctness as with the 
+original implementation and the OpenMP implementation: The fact that it 
+validates is sufficient evidence of correctness.
 
 \subsection{Speedup}
 \todo{S V T}
+
+
 \begin{table}[h]
 \centering
 \resizebox{\columnwidth}{!}{%

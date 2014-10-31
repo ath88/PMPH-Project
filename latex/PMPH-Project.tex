@@ -80,9 +80,16 @@ if executed in parallel, all iterations would be writing to the same memory.
 We can, however, privatize the struct, such that all iterations allocate their
 own struct, and therefore does not read and write to the same memory. This is 
 a method known as privatization, and allows us to parallelize the entire loop
-with an OpenMP pragma directive.
+with an OpenMP pragma directive. 
 
-TODO write about why we can do this, ie. no accumulation in struct or nothin'
+While privatization does work in this case, this is not immediately clear. It is
+important to note that this would not have worked, if there had been some kind
+of accumulator in the struct, used by the next iteration. The only way to ensure
+that this is not the case, is to look through the code and take note of which 
+variables are read, and realize that they are all previously written in the 
+same iteration, such that nothing is carried from each loop iteration.
+
+TODO static scheduling
 
 
 \subsection{Validation}
@@ -91,7 +98,11 @@ implementation is not catastrophically wrong, but does not prove that it is
 correct. We can make the same assumption about correctness as with the 
 original implementation.
 
-TODO heat dissipation algorithm, if its wrong, it really explodes after some time
+We have shortly been looking into how the algorithm works, and what it does. We
+realize that if we have a wrong implementation, and a relatively high amount of 
+timesteps, then the results will be very off from the correct results. We have,
+however, created our own 'Tiny' dataset, which turned out to validate on some
+implementations, but fail on others.
 
 \subsection{Speedup}
 While this implementation is parallel across multiple processors, measuring the
@@ -119,17 +130,22 @@ When using OpenMP, we utilize the machines 16 cores with dual hyperthreading.
 This will give us a theoretical max speedup of factor 32. When running the small 
 dataset, the OpenMP pragma we used will only create 16 processes on 16 cores
 corresponding to the number of iterations on the outer loop. This means that 
-we will only get a theoretical max speedup of factor 16. The overhead from 
-creating processes, sharing result memory, and only having 16 concurrently 
-running processes makes the results seem probable.
+we will only get a theoretical max speedup of factor 16, on the small dataset. 
 
-TODO elaborate on expectations of hyperthreading
+While using 16 cores, we expect a speedup of slight amount short of 16. Then we 
+gain a little extra from hyperthreading, if we have more than 16 processes. 
+Finally we loose a little from overhead from creating and sharing result memory.
+
 
 
 \section{CUDA Implementation}
 
 \subsection{Transformations}
 TODO indexing into arrays, dont do it like Cosmin wants us to. Esben?
+\subsubsection{Loop Distribution}
+\subsubsection{Coalesced Data Access}
+\subsubsection{Loop Interchange}
+\subsubsection{Array Expansion}
 
 
 \subsection{Validation}
@@ -140,6 +156,7 @@ TODO indexing into arrays, dont do it like Cosmin wants us to. Esben?
 \begin{tabular}{|l|r|r|r|}
 \hline
 Speedup \textbackslash\ Dataset & Small      & Medium     & Large        \\ \hline
+
 Original                        & 2050766 us & 4240619 us & 187729378 us \\ \hline
 OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hline
 CUDA                            &  us  &  us  &  us   \\ \hline

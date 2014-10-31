@@ -694,7 +694,7 @@ void initOperator_host(PrivGlobs &globs) {
         report_cuda_error("initOperator");
 }
 
-void run_OrigCPU(
+void run(
 		const unsigned int &outer,
 		const unsigned int &numX,
 		const unsigned int &numY,

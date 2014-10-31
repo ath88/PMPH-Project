@@ -694,7 +694,7 @@ void initOperator_host(PrivGlobs &globs) {
         report_cuda_error("initOperator");
 }
 
-void run_OrigCPU(
+void run(
 		const unsigned int &outer,
 		const unsigned int &numX,
 		const unsigned int &numY,
@@ -738,26 +738,17 @@ void run_OrigCPU(
 	TIMER_STOP(init);
 	TIMER_START(timeline);
 
-
         setPayoff_host(globs);
 
 	for(int t = globs.numT-2; t>=0; --t) {
-		//printf("%d / %d\n", count++, globs.numT-2);
 		updateParams_host(t,alpha,beta,nu,globs);
 		
 		TIMER_START(rollback);
-		
-		
-		//transpose_u_host(t, globs);
 		// explicit x
 		TIMER_START(rollback_0);
 		rollback0_host(t, globs);
 		TIMER_STOP(rollback_0);
-		//transpose_u_back_host(t, globs);
-		
-		//transpose_u_host(t, globs);
-		//transpose_u_back_host(t, globs);
-		
+
 		// explicit y
 		TIMER_START(rollback_1);
 		rollback1_host(t, globs);
@@ -771,9 +762,6 @@ void run_OrigCPU(
 		TIMER_START(rollback_2_tridag);
 		rollback2_tridag_host(t, globs);
 		TIMER_STOP(rollback_2_tridag);
-		
-		//transpose_u_host(t, globs);
-		//transpose_u_back_host(t, globs);
 		
 		// implicit y
 		TIMER_START(rollback_3);
@@ -803,6 +791,7 @@ void run_OrigCPU(
 	cudaMalloc(&d_res, sizeof(REAL) * outer);
 	copyResult_kernel <<< 1, globs.outer >>> (d_res, *globs.d_globs);
 	cudaMemcpy(res, d_res, sizeof(REAL) * outer, cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
 
 	TIMER_STOP(result);
 	globs.free();
@@ -831,11 +820,11 @@ void run_OrigCPU(
 	
 	int serial_time = 0;
 	if(outer == 16) {
-		serial_time = 2000000;
+		serial_time = 2050766;
 	} else if(outer == 32) {
-		serial_time = 4200000;
+		serial_time = 4240619;
 	} else if(outer == 128) {
-		serial_time = 183374932;
+		serial_time = 187729378;
 	}
 	if(serial_time != 0) {
 		printf("Speedup vs serial: %f\n",

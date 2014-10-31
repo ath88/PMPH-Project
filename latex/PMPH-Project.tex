@@ -56,15 +56,15 @@ it against the original implementation and the OpenMP implementation.
 
 \section{Sequential Implementation}
 First we will profile the original implementation, and showcase our findings.
-This will help us determince what we definitely should parallelize, and what is
-less relevant. 
+This will help us determine what we definitely should parallelize, and what is
+less relevant.
 
 \subsection{Timing}
 We have made approximate timing of specific parts of the original 
 implementation, to get an overview 
 of where we can achieve relevant speedups according to Amdahl's Law. The results
-can be seen in \autoref{table:origtime}. In the table, there are indentations 
-in the first column indicating what parts are inside other parts. For example,
+can be seen in \autoref{table:origtime}. In the table, the indentations 
+in the first column indicate what parts are inside other parts. For example,
 the running time of tridag\_0 is part of the running time of rollback\_2, which
 in turn is part of rollback, and so forth. The time of the outer loop is the 
 total running time of the entire calculation. 
@@ -120,9 +120,9 @@ Basically all of the program runs inside the outer-loop.
 In this loop, first there is some initialization, and then we enter the timeline-loop in which the update\_Params function and the rollback function are called.
 Here, the update\_Params function consists of a nested for-loop (an y-loop inside an x-loop), and the rollback function runs several combinations of the x-loop and the y-loop, some of which call the tridag function.
 
-So to our efforts have been put into finding out which of these loops are (or can be made) parallel, and in the case of the CUDA implementation we have distributed and interchanged the loops in order to create perfect loop-nests, which then correspond to kernels.
+So our efforts have been put into finding out which of these loops are (or can be made) parallel, and, in the case of the CUDA implementation, distributing and interchanging the loops in order to create perfect loop-nests, which then correspond to kernels.
 
-TODO explain more
+// TODO explain more ??
 
 \subsection{Validation}
 The original implementation validates against all 3 datasets. This is expected,
@@ -137,20 +137,20 @@ of our implementation, and finally we will compare it to the original
 implementation.
 
 \subsection{Privatization}
-The outer loop in the original implementation uses the same allocation of a C 
+The outer-loop in the original implementation uses the same C 
 struct for each
-iteration of the loop. This, in turn, makes it inherently not parallel, since,
-if executed in parallel, all iterations would be writing to the same memory. 
-We can, however, privatize the struct, such that all iterations allocate their
-own struct, and therefore does not read and write to the same memory. This is 
-a method known as privatization, and allows us to parallelize the entire loop
+iteration of the loop. This, in turn, makes it inherently non-parallel, since,
+if executed in parallel, all iterations would be writing to the same memory location. 
+We can, however, give each iteration its own copy of the
+struct, so that the iterations do not read and write to the same memory location. This is 
+known as privatization, and allows us to parallelize the entire loop
 with an OpenMP pragma directive. 
 
-While privatization does work in this case, this is not immediately clear. It is
-important to note that this would not have worked, if there had been some kind
-of accumulator in the struct, used by the next iteration. The only way to ensure
+While privatization does work in this case, it is not immediately clear why it does. It is
+important to note that it would not have worked if there had been a dependency between the iterations,
+e.g., an accumulator that was used by the next iteration. The only way to ensure
 that this is not the case, is to look through the code and take note of which 
-variables are read, and realize that they are all previously written in the 
+variables are read, and verify that they are all previously written in the 
 same iteration, such that nothing is carried from each loop iteration.
 
 When telling OpenMP how to parallelize, we decided to go with static scheduling.
@@ -228,7 +228,9 @@ did in approximately chronological order.
 \subsubsection{Array Expansion}
 The outer loop is not parallel. Previously we remedied this by privatization,
 but this approach will not work here, since we aim to use the GPU, and will 
-need to keep the struct available across multiple CUDA kernels.
+need to keep the struct available across multiple CUDA kernels. Therefore we
+expand most of the arrays in the struct with O copies, where O corresponds to
+the number of iterations in the outer loop.
 
 
 adding another dimension to some of the arrays t
@@ -262,7 +264,7 @@ Speedup                         & 11.11      & 18.02      & 20.52        \\ \hli
 \end{tabular}
 }
 \caption{Speedup comparison of the original implementation, the OpenMP implementation and the CUDA implementation}
-\label{table:omptime}
+\label{table:cudatime}
 \end{table}
 \subsection{Conclusion}
 

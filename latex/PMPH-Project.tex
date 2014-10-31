@@ -243,7 +243,22 @@ how we can run all iterations of parts of a parallel loop at the same time
 
 
 \subsubsection{Coalesced Data Access}
-Transposing, flipping axes, etc
+After having parallelized the execution, the data accesses were a major bottleneck because the they were not coalesced.
+The problems were mostly $x$ by $y$ matrices that were traversed in the opposite order on the GPU because we have parallelized the $y$ loop.
+When traversing a matrix the access pattern should look like this (where \texttt{i} traverses the $x$-axis in the loop and \texttt{j} traverses the $y$-axis in parallel):
+\begin{lstlisting}[language=C]
+for(int i = 0; i < numX; i++) {
+	data[i*numY + j];
+}
+\end{lstlisting}
+
+Since most of the matrices are always traversed in the same direction, we could simply swap the indexing at every access to the matrix, resulting in major speedups without adding any code.
+
+Two matrices, namely \texttt{myResult} and \texttt{y} were, however, traversed in different directions at different places in the loop.
+For these, we inserted kernels to transpose them between kernel calls, so that each kernel can traverse the data in an optimal manner and still get the desired results.
+We used the tiled transpose kernel from assignment 3 for this (modified to take the outer loop into account), and the time spent transposing is much less than the time saved using coalesced access.
+Only on the small data set is the time spent transposing a dominating contribution to the total time.
+
 
 \subsubsection{Nudging around}
 \todo{indexing into arrays, dont do it like Cosmin wants us to. Esben?}

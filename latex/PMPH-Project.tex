@@ -158,7 +158,7 @@ we will only get a theoretical max speedup of factor 16, on the small dataset.
 
 While using 16 cores, we expect a speedup of slight amount short of 16. Then we 
 gain a little extra from hyperthreading, if we have more than 16 processes. 
-Finally we loose a little from overhead from creating and sharing result memory.
+Finally we loose a little as overhead from creating and sharing result memory.
 This makes the results very much in line with our expectations.
 
 
@@ -172,14 +172,20 @@ implementation and the OpenMP implementation.
 We did various transpormations on the original code. Here we explain what we 
 did, and in approximately chronological order.
 
+\subsubsection{Array Expansion}
+The outer loop is not parallel. Previously we remedied this by privatization,
+but this approach will not work here, since we aim to use the GPU, and will 
+need to keep the struct available across multiple CUDA kernels.
+
+
+adding another dimension to some of the arrays t
+
 \subsubsection{Loop Interchange}
 switching outer and timeline loops
 
 \subsubsection{Loop Distribution}
 how we can run all iterations of parts of a parallel loop at the same time
 
-\subsubsection{Array Expansion}
-adding another dimension to some of the arrays
 
 \subsubsection{Coalesced Data Access}
 Transposing, flipping axes, etc

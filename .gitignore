@@ -6,6 +6,7 @@
 *.log
 *.out
 .emacs.desktop*
+*.synctex.gz
 
 runproject
 Debug.txt

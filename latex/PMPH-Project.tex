@@ -13,6 +13,7 @@
 \usepackage{listings}
 \usepackage[pdftex,colorlinks=true]{hyperref}
 \usepackage{graphics}
+\usepackage{todonotes}
 
 \begin{document}
 \title{\Title}
@@ -26,6 +27,10 @@ implementation. Finally, we reason about our CUDA implementation, and measure
 it against the original implementation and the OpenMP implementation.
 
 \section{Sequential Implementation}
+First we will profile the original implementation, and showcase our findings.
+This will help us determince what we definitely should parallelize, and what is
+less relevant. 
+
 \subsection{Timing}
 We have made approximate timing of specific parts of the original 
 implementation, to get an overview 
@@ -40,7 +45,7 @@ total running time of the entire calculation.
 but we have visually verified that it is a statistically average example. 
 
 The table clearly shows what parts of the implementation we should parallelize.
-TODO explain more
+\todo{explain more}
 
 \begin{table}[h]
 \centering
@@ -65,6 +70,7 @@ outer                        & 2050766 us & 100.00\% & 4240619 us & 100.00\%  & 
 \label{table:origtime}
 \end{table}
 
+
 \subsection{Validation}
 The original implementation validates against all 3 datasets. This is expected,
 since we did not change the original implementation. It is assumed that the 
@@ -72,6 +78,11 @@ original implementation is therefore correct.
 
 
 \section{OpenMP Implementation}
+In this section we will first reason about how we transformed the sequential
+implementation to run on multiple cores. Then we will reason about the validity 
+of our implementation, and finally we will compare it to the original 
+implementation.
+
 \subsection{Privatization}
 The outer loop in the original implementation uses the same allocation of a C 
 struct for each
@@ -89,7 +100,13 @@ that this is not the case, is to look through the code and take note of which
 variables are read, and realize that they are all previously written in the 
 same iteration, such that nothing is carried from each loop iteration.
 
-TODO static scheduling
+When telling OpenMP how to parallelize, we decided to go with static scheduling.
+This means that all iterations are distributed during compliation. This gives
+less overhead, compared to dynamic scheduling, which happens at runtime. We do
+this because we know that each iteration of the outer loop yields the same
+amount of work, such that no iteration takes much longer time that the others.
+Had they been of different size, then static scheduling would lead to load 
+imbalance, and incur extra overhead due to siginificant idling on some cores.
 
 
 \subsection{Validation}
@@ -103,6 +120,13 @@ realize that if we have a wrong implementation, and a relatively high amount of
 timesteps, then the results will be very off from the correct results. We have,
 however, created our own 'Tiny' dataset, which turned out to validate on some
 implementations, but fail on others.
+
+Another curiousity is that, if we skip writing to the result array, then there
+is a good chance that we allocated the exact same block of memory as the 
+previous execution, and that the results are already there. This happened to us
+at least once, and it can be fixed by 0-initializing the result array, prior to
+the calculation.
+
 
 \subsection{Speedup}
 While this implementation is parallel across multiple processors, measuring the
@@ -121,7 +145,7 @@ OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hli
 Speedup                         & 11.11      & 18.02      & 20.52        \\ \hline
 \end{tabular}
 }
-\caption{Approximate timings of the original implementation}
+\caption{Speedup comparison of the original implementation and the OpenMP implementation}
 \label{table:omptime}
 \end{table}
 
@@ -137,16 +161,30 @@ gain a little extra from hyperthreading, if we have more than 16 processes.
 Finally we loose a little from overhead from creating and sharing result memory.
 
 
-
 \section{CUDA Implementation}
+In this section we will first reason about how we transformed the sequential
+implementation to run on the GPU. Then we will reason about the validity of 
+our implementation, and finally we will compare it to the original 
+implementation and the OpenMP implementation.
 
 \subsection{Transformations}
-TODO indexing into arrays, dont do it like Cosmin wants us to. Esben?
-\subsubsection{Loop Distribution}
-\subsubsection{Coalesced Data Access}
-\subsubsection{Loop Interchange}
-\subsubsection{Array Expansion}
+We did various transpormations on the original code. Here we explain what we 
+did, and in approximately chronological order.
 
+\subsubsection{Loop Interchange}
+switching outer and timeline loops
+
+\subsubsection{Loop Distribution}
+how we can run all iterations of parts of a parallel loop at the same time
+
+\subsubsection{Array Expansion}
+adding another dimension to some of the arrays
+
+\subsubsection{Coalesced Data Access}
+Transposing, flipping axes, etc
+
+\subsubsection{Nudging around}
+\todo{indexing into arrays, dont do it like Cosmin wants us to. Esben?}
 
 \subsection{Validation}
 \subsection{Speedup}

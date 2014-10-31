@@ -159,6 +159,7 @@ we will only get a theoretical max speedup of factor 16, on the small dataset.
 While using 16 cores, we expect a speedup of slight amount short of 16. Then we 
 gain a little extra from hyperthreading, if we have more than 16 processes. 
 Finally we loose a little from overhead from creating and sharing result memory.
+This makes the results very much in line with our expectations.
 
 
 \section{CUDA Implementation}
@@ -201,7 +202,7 @@ CUDA                            &  us  &  us  &  us   \\ \hline
 Speedup                         & 11.11      & 18.02      & 20.52        \\ \hline
 \end{tabular}
 }
-\caption{Approximate timings of the original implementation}
+\caption{Speedup comparison of the original implementation, the OpenMP implementation and the CUDA implementation}
 \label{table:omptime}
 \end{table}
 \subsection{Conclusion}

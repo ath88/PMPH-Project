@@ -33,14 +33,13 @@ of where we can achieve relevant speedups according to Amdahl's Law. The results
 can be seen in \autoref{table:origtime}. In the table, there are indentations 
 in the first column indicating what parts are inside other parts. For example,
 the running time of tridag\_0 is part of the running time of rollback\_2, which
-in time is part of rollback, and so forth. The time of the outer loop is the 
+in turn is part of rollback, and so forth. The time of the outer loop is the 
 total running time of the entire calculation. 
 
 \autoref{table:origtime} is based on a single execution of the implementation, 
 but we have visually verified that it is a statistically average example. 
-
 The table clearly shows what parts of the implementation we should parallelize.
-TODO explain more
+We see that, combined, the update\_Params function and the rollback function take approximately $56.83\%+42.83\%=99.66\%$ of the execution time.
 
 \begin{table}[h]
 \centering
@@ -64,6 +63,33 @@ outer                        & 2050766 us & 100.00\% & 4240619 us & 100.00\%  & 
 \caption{Approximate timings of the original implementation}
 \label{table:origtime}
 \end{table}
+
+A bit of terminology: We refer to the following loop
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+  for(unsigned i = 0; i < outer; ++ i) { ... }
+\end{lstlisting}
+as just the \emph{outer}-loop. This loop
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+  for(int i = numT-2;i>=0;--i) { ... }
+\end{lstlisting}
+we call the \emph{timeline}-loop, where we have defined
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+  numT = globs.myTimeline.size().
+\end{lstlisting}
+And finally, these two loops
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true]
+  for(i=0;i<numX;i++) { ... }
+  for(j=0;j<numY;j++) { ... }
+\end{lstlisting}
+are called the \emph{x}-loop and the \emph{y}-loop, respectively.
+
+Basically all of the program runs inside the outer-loop.
+In this loop, first there is some initialization, and then we enter the timeline-loop in which the update\_Params function and the rollback function are called.
+Here, the update\_Params function consists of a nested for-loop (an y-loop inside an x-loop), and the rollback function runs several combinations of the x-loop and the y-loop, some of which call the tridag function.
+
+So to our efforts have been put into finding out which of these loops are (or can be made) parallel, and in the case of the CUDA implementation we have distributed and interchanged the loops in order to create perfect loop-nests, which then correspond to kernels.
+
+TODO explain more
 
 \subsection{Validation}
 The original implementation validates against all 3 datasets. This is expected,
@@ -177,15 +203,21 @@ Here follows example output from running the different implementations.
 \lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/orig-run-small.txt}
 \subsection{OpenMP implementation, small dataset}
 \lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/OpenMP-run-small.txt}
-\subsection{Original implementation, medium dataset}
+\subsection{CUDA implementation, small dataset}
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/CUDA-run-small.txt}
 
+\subsection{Original implementation, medium dataset}
 \lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/orig-run-medium.txt}
 \subsection{OpenMP implementation, medium dataset}
 \lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/OpenMP-run-medium.txt}
-\subsection{Original implementation, large dataset}
+\subsection{CUDA implementation, medium dataset}
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/CUDA-run-medium.txt}
 
+\subsection{Original implementation, large dataset}
 \lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/orig-run-large.txt}
 \subsection{OpenMP implementation, large dataset}
 \lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/OpenMP-run-large.txt}
+\subsection{CUDA implementation, large dataset}
+\lstinputlisting[basicstyle=\footnotesize\ttfamily,breaklines=true]{data/CUDA-run-large.txt}
 
 \end{document}

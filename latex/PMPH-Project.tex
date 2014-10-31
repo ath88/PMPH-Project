@@ -282,11 +282,11 @@ Transposing, flipping axes, etc
 \begin{tabular}{|l|r|r|r|}
 \hline
 Speedup \textbackslash\ Dataset & Small      & Medium     & Large        \\ \hline
-
 Original                        & 2050766 us & 4240619 us & 187729378 us \\ \hline
 OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hline
-CUDA                            &  us  &  us  &  us   \\ \hline
-Speedup                         & 11.11      & 18.02      & 20.52        \\ \hline
+CUDA                            & 124677 us  & 155702 us  & 1789467 us   \\ \hline
+Speedup Original / CUDA         & 16.45      & 27.23      & \textcolor{ugreen}{\textbf{104.91}}       \\ \hline
+Speedup OpenMP / CUDA           & 1.48       & 1.51       & 5.1          \\ \hline
 \end{tabular}
 }
 \caption{Speedup comparison of the original implementation, the OpenMP implementation and the CUDA implementation}

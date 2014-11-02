@@ -86,17 +86,17 @@ We see that, combined, the update\_Params function and the rollback function tak
 \begin{tabular}{|l|r|r|r|r|r|r|}
 \hline
 Name \textbackslash\ Dataset & Small      & Small \% & Medium     & Medium \% & Large        & Large \% \\ \hline
-outer                        & 2050766 us & 100.00\% & 4240619 us & 100.00\%  & 187729378 us & 100.00\% \\ \hline
-\ \ init                     & 171 us     & 0.00\%   & 238 us     & 0.00\%    & 2068 us      & 0.00\%   \\ \hline
-\ \ setPayoff                & 174 us     & 0.00\%   & 363 us     & 0.00\%    & 10651 us     & 0.01\%   \\ \hline
-\ \ updateParams             & 1199969 us & 58.15\%  & 2492123 us & 58.77\%   & 106691216 us & 56.83\%  \\ \hline
-\ \ rollback                 & 839027 us  & 40.91\%  & 1729438 us & 40.78\%   & 80412624 us  & 42.83\%  \\ \hline
-\ \ \ \ rollback\_0          & 117198 us  & 5.71\%   & 246938 us  & 5.82\%    & 11824914 us  & 6.30\%   \\ \hline
-\ \ \ \ rollback\_1          & 111773 us  & 5.45\%   & 236186 us  & 5.56\%    & 12284147 us  & 6.54\%   \\ \hline
-\ \ \ \ rollback\_2          & 286646 us  & 13.98\%  & 585957 us  & 13.82\%   & 25915774 us  & 13.80\%  \\ \hline
-\ \ \ \ \ \ tridag\_0        & 203364 us  & 9.92\%   & 421277 us  & 9.93\%    & 18500994 us  & 9.86\%   \\ \hline
-\ \ \ \ rollback\_3          & 304214 us  & 14.83\%  & 627087 us  & 14.79\%   & 28554403 us  & 15.21\%  \\ \hline
-\ \ \ \ \ \ tridag\_1        & 200502 us  & 9.78\%   & 416905 us  & 9.83\%    & 18612169 us  & 9.91\%   \\ \hline
+outer                        & 2050766 $\mu s$ & 100.00\% & 4240619 $\mu s$ & 100.00\%  & 187729378 $\mu s$ & 100.00\% \\ \hline
+\ \ init                     & 171 $\mu s$     & 0.00\%   & 238 $\mu s$     & 0.00\%    & 2068 $\mu s$      & 0.00\%   \\ \hline
+\ \ setPayoff                & 174 $\mu s$     & 0.00\%   & 363 $\mu s$     & 0.00\%    & 10651 $\mu s$     & 0.01\%   \\ \hline
+\ \ updateParams             & 1199969 $\mu s$ & 58.15\%  & 2492123 $\mu s$ & 58.77\%   & 106691216 $\mu s$ & 56.83\%  \\ \hline
+\ \ rollback                 & 839027 $\mu s$  & 40.91\%  & 1729438 $\mu s$ & 40.78\%   & 80412624 $\mu s$  & 42.83\%  \\ \hline
+\ \ \ \ rollback\_0          & 117198 $\mu s$  & 5.71\%   & 246938 $\mu s$  & 5.82\%    & 11824914 $\mu s$  & 6.30\%   \\ \hline
+\ \ \ \ rollback\_1          & 111773 $\mu s$  & 5.45\%   & 236186 $\mu s$  & 5.56\%    & 12284147 $\mu s$  & 6.54\%   \\ \hline
+\ \ \ \ rollback\_2          & 286646 $\mu s$  & 13.98\%  & 585957 $\mu s$  & 13.82\%   & 25915774 $\mu s$  & 13.80\%  \\ \hline
+\ \ \ \ \ \ tridag\_0        & 203364 $\mu s$  & 9.92\%   & 421277 $\mu s$  & 9.93\%    & 18500994 $\mu s$  & 9.86\%   \\ \hline
+\ \ \ \ rollback\_3          & 304214 $\mu s$  & 14.83\%  & 627087 $\mu s$  & 14.79\%   & 28554403 $\mu s$  & 15.21\%  \\ \hline
+\ \ \ \ \ \ tridag\_1        & 200502 $\mu s$  & 9.78\%   & 416905 $\mu s$  & 9.83\%    & 18612169 $\mu s$  & 9.91\%   \\ \hline
 \end{tabular}
 }
 \caption{Approximate timings of the original implementation}
@@ -155,7 +155,7 @@ struct, so that the iterations do not read and write to the same memory location
 known as privatization, and allows us to parallelize the entire loop
 with an OpenMP pragma directive. 
 
-While privatization does work in this case, it is not immediately clear why it does. It is
+While privatization does work in this particular case, it is not immediately clear why it does. It is
 important to note that it would not have worked if there had been a dependency between the iterations,
 e.g., an accumulator that was used by the next iteration. The only way to ensure
 that this is not the case is to look through the code and take note of which 
@@ -201,8 +201,8 @@ compare with the total running time, and the results can be seen in
 \begin{tabular}{|l|r|r|r|}
 \hline
 Speedup \textbackslash\ Dataset & Small      & Medium     & Large        \\ \hline
-Original                        & 2050766 us & 4240619 us & 187729378 us \\ \hline
-OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hline
+Original                        & 2050766 $\mu s$ & 4240619 $\mu s$ & 187729378 $\mu s$ \\ \hline
+OpenMP                          & 184573 $\mu s$  & 235295 $\mu s$  & 9150758 $\mu s$   \\ \hline
 Speedup                         & 11.11      & 18.02      & 20.52        \\ \hline
 \end{tabular}
 }
@@ -213,7 +213,10 @@ Speedup                         & 11.11      & 18.02      & 20.52        \\ \hli
 \subsection{Conclusion}
 \todo{S V T}
 When using OpenMP, we utilize the machine's 16 cores with hyperthreading. 
-This will give us a maximum realistic speedup of factor 32. When running the small 
+This will give us a maximum realistic speedup of factor 32.
+However, we did expect the actual speedup to be closer to 16 than 32, since hyperthreading does not change the fact that we have 16 hardware threads, it only helps hide latencies a bit.
+
+When running the small 
 dataset, the OpenMP pragma we used will only create 16 processes on 16 cores
 corresponding to the number of iterations on the outer loop. This means that 
 we will only get a max speedup of factor 16 on the small dataset. 
@@ -246,9 +249,9 @@ The outer loop is not parallel as it is. Previously we remedied this by privatiz
 but this approach will not work here, since we aim to use the GPU where
 it is preferable to do all memory allocation before launching the CUDA-kernels.
 In addition, we need to keep variables available across multiple kernels. Therefore we
-expand most of the arrays in the struct with O copies, where O corresponds to
+expand most of the arrays in the struct with $O$ copies, where $O$ corresponds to
 the number of iterations in the outer loop. The arrays we have expanded are:
-myResult, myVarX, myVarY, u, v, a, b, c, y and yy. Those we chosen because 
+\texttt{myResult}, \texttt{myVarX}, \texttt{myVarY}, \texttt{u}, \texttt{v}, \texttt{a}, \texttt{b}, \texttt{c}, \texttt{y} and \texttt{yy}. Those were chosen because 
 they are all being written to inside the loop. The remaining arrays are only 
 read from, and will thus not result in a conflict. 
 
@@ -265,7 +268,7 @@ So if we have a parallel loop containing statements A, B and C, we can transform
 one that loops over A, a second one that loops over B, and a third one that loops over C.
 The only condition is that we must remember to array-expand all private variables that span two or more of the newly created loops (otherwise, each iteration of one loop would just overwrite the variable such that only the value from the last thread to finish would be available in the next loop, which is obviously not what we want).
 
-At this point, we have a parallel outer-loop that has some initialization statements (initGrid and initOperator), and then a sequential loop (the timeline-loop).
+At this point, we have a parallel outer-loop that has some initialization statements (\texttt{initGrid} and \texttt{initOperator}), and then a sequential loop (the timeline-loop).
 So we distribute the outer-loop, giving us one outer-loop containing the initialization statements, and another outer-loop containing just the timeline-loop.
 After distributing, we can continue the transformations on both new copies of the outer-loop.
 
@@ -286,11 +289,18 @@ So single loops are also perfectly fine, as long as their sizes are large enough
 In our datasets, however, no single dimension is large enough to fully occupy the GPU, so we do need to create loop-nests in order to obtain sufficiently large loops.
 
 Currently, we have only optimized our program towards the large dataset.
-After performing the transformations mentioned above, in much of the code we end up with triple-nested loops: An outer-loop, an x-loop and a y-loop. Since each of these loops is parallel, such nests might be interchanged in any way we want. For the large dataset, it is sufficient to parallelize along two of the three dimensions. Two loops are large enough to fully utilize the GPU, and further parallelization would not increase the amount of work done in parallel (/* Måske nogle beregninger her? Og ville det forværre performance (mere overhead) at parallelisere mere? */). This is something we have only reasoned about with pen and paper calculations --- we didn't do any experiment parallelizing the third dimension to see what the actual impact was.
+After performing the transformations mentioned above, in much of the code we end up with triple-nested loops: An outer-loop, an x-loop and a y-loop. Since each of these loops are parallel, such nests might be interchanged in any way we want. For the large dataset, it is sufficient to parallelize along two of the three dimensions.
+For the large data set, the two loops make up $\mathtt{outer} \cdot \mathtt{num\_y} = 128 \cdot 256 = 32,768$ threads.
+The card can occupy $20 \cdot 1024 = 20480$ threads.
+Thus, the parallelization of the two loops is enough to utilize the GPU, and further parallelization would not increase the amount of work done in parallel.
+For the medium data set, it might have been interesting to try parallelizing a third dimension, but we managed reasonable speedups without it.
+For the small data set we would need a very different approach to obtain good speedups.
+This is something we have only reasoned about with pen and paper calculations --- we didn't do any experiment parallelizing the third dimension to see what the actual impact was.
 
 As a consequence, we have only made two-dimensional kernels at this point. We have chosen to parallelize along the outer and y dimensions where possible. Some places in the code, the transformations only gave doubly-nested loops, and if those consisted of an outer-loop and an x-loop, then naturally we parallelize along the outer and x dimensions instead.
 
 // Esben, kan du uddybe f.eks. hvor meget der skal til for at fylde GPU'en?
+// Esben: Done. Se lige om I synes det giver mening.
 
 %This allows us to move the outer loop 
 %inwards, such that the parallel loops are in close proximity to each other. 
@@ -317,26 +327,55 @@ Only on the small data set is the time spent transposing a dominating contributi
 \todo{S V T}
 
 \subsubsection{Nudging around}
+
+After applying the main transformations, the main speedups were already obtained, and the performance was acceptable.
+However, as the most significant bottlenecks were removed, a handful of minor optimizations would suddenly lead to relevant speedups.
+In the following, we will describe the various optimizations we performed to tweak the implementation.
+
 \todo{S V T}
 
 \paragraph{Duplicate Data Access\\}
-At several places in the code, some data was accessed several times close to each other, but not close enough to be optimized by the compiler.
-We obtained significant speedups by caching this data in a local variable.
+At several places in the code, some data was accessed several times close to each other, but not close enough to be optimized by the compiler (if it attempts it at all).
+We obtained significant speedups by caching this data in local variables.
 
-Similarly, there were places where data close to each other was read throughout a kernel.
+Similarly, there were places where distinct data elements was located closely in global memory was read at different times in a kernel.
+Moving these reads to occur at the same place and saving them in local variables for later use, we obtained better use of the memory cache, resulting in noticeable speedups.
 
 \paragraph{Shared Memory\\}
+Most of the matrices are too big to fit in the shared memory, and most of the reads differ from thread to thread, making shared memory hard to utilize in this problem.
+
+However, a few places we read \texttt{myDxx} and \texttt{myDyy} into shared memory, reducing the amount of global memory transactions.
+This was possible because of the problem sizes and the number of threads per block, and is thus not a general solution.
+However, even the big data set was compatible to this solution.
+For a general solution, it would be easy to automatically disable this optimization when it is inappropriate.
+
+Another use of shared memory is the transpose kernel, which yields a massive speedup from this.
+Since this is described in detail in assignment 3, we will not discuss it further here.
+
 \paragraph{Block Dimensions\\}
-\paragraph{Shared memory\\}
-\paragraph{Constant Memory Indexing\\}
+
+The block dimensions play a large role in the overall performance, as they determine the occupancy of the multiprocessors.
+Since we have mainly been struggling with memory issues during this project, we would expect that the maximum number of threads was optimal, since it gives each multiprocessor the best opportunity for hiding latencies.
+Through experimentation, we determined that the \texttt{rollback()} functions ran most effectively with 24 by 24 blocks, that is 576 threads per multiprocessor.
+The \texttt{tridag()} functions are optimal with the maximum 32 by 32 configurations, as is transposition functions (as we already knew from assignment 3).
+
+\paragraph{Constant Memory\\}
+
+The constant memory can be used to optimize memory reads because it is faster than global memory.
+However, it is very small, and thus hard to utilize for this project.
+We did not have the time to experiment with this, but we expect that only minor optimizations can be done, as most of the memory reads times are spent on the largest matrices, which can not fit in constant memory.
+
 \paragraph{Array Indexing\\}
-indexing into arrays, dont do it like Cosmin wants us to.
+
+Calculation of indices for matrix lookups can be optimized by maintaining a pointer offset for a loop instead of calculating the address based on the loop counter.
+This can save a small amount of time, and is mostly relevant for loops with little works but man y iterations.
+In our case, we were able to optimize some of the loops in this fashion, but most of them showed no measurable difference.
+A few even became slower, which is why some of the loop are left without this optimization.
+We suspect that this is because the compiler can sometimes optimize the loop, and by manually optimizing, one can sometimes make it harder for the compiler to apply its own optimizations.
 
 \subsection{Validation}
 \todo{S V T}
-This implementation validates against all 3 datasets. This shows that our
-implementation is not catastrophically wrong, but does not prove that it is
-correct. However, we make the same assumption about correctness as with the 
+This implementation validates against all 3 datasets. As mentioned earlier, this does not strictly prove anything. However, we make the same assumption about correctness as with the 
 original implementation and the OpenMP implementation: The fact that it 
 validates is sufficient evidence of correctness.
 
@@ -350,9 +389,9 @@ validates is sufficient evidence of correctness.
 \begin{tabular}{|l|r|r|r|}
 \hline
 Speedup \textbackslash\ Dataset & Small      & Medium     & Large        \\ \hline
-Original                        & 2050766 us & 4240619 us & 187729378 us \\ \hline
-OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hline
-CUDA                            & 124677 us  & 155702 us  & 1789467 us   \\ \hline
+Original                        & 2050766 $\mu s$ & 4240619 $\mu s$ & 187729378 $\mu s$ \\ \hline
+OpenMP                          & 184573 $\mu s$  & 235295 $\mu s$  & 9150758 $\mu s$   \\ \hline
+CUDA                            & 124677 $\mu s$  & 155702 $\mu s$  & \textcolor{ugreen}{\textbf{1789467 $\mu s$}}   \\ \hline
 Speedup Original / CUDA         & 16.45      & 27.23      & \textcolor{ugreen}{\textbf{104.91}}       \\ \hline
 Speedup OpenMP / CUDA           & 1.48       & 1.51       & 5.1          \\ \hline
 \end{tabular}

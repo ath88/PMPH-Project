@@ -126,7 +126,7 @@ Basically all of the program runs inside the outer-loop.
 In this loop, first there is some initialization, and then we enter the timeline-loop in which the update\_Params function and the rollback function are called.
 Here, the update\_Params function consists of a nested for-loop (an y-loop inside an x-loop), and the rollback function runs several combinations of the x-loop and the y-loop, some of which call the tridag function.
 
-So our efforts have been put into finding out which of these loops are (or can be made) parallel, and, in the case of the CUDA implementation, distributing and interchanging the loops in order to create perfect loop-nests, which then correspond to kernels.
+So our efforts have been put into finding out which of these loops are (or can be made) parallel, and, in the case of the CUDA implementation, distributing and interchanging the parallel loops in order to create perfect loop-nests, which then correspond to kernels.
 
 // TODO explain more ??
 
@@ -174,7 +174,7 @@ imbalance, and incur extra overhead due to significant idling on some cores.
 \subsection{Validation}
 \todo{S V T}
 The implementation validates against all 3 datasets. This shows that our
-implementation is not catastrophically wrong, but does not prove that it is
+implementation is not catastrophically wrong, but does not \emph{prove} that it is
 correct. However, we make the same assumption about correctness as with the 
 original implementation: The fact that it validates is sufficient evidence of correctness.
 
@@ -182,9 +182,9 @@ We have briefly looked at how the algorithm works and what it does. We
 realize that if we have a wrong implementation, then the results should differ quite much from the correct results, provided we have a relatively high amount of timesteps. We created our own 'Tiny' dataset and ran it on the original implementation to produce ``correct'' output data for it. It turned out that some implementations validated on this dataset, even though they actually failed on the other datasets.
 
 Another curiosity is that, if we skip writing to the result array, then there
-is a good chance that we allocated the exact same block of memory as the 
+is a good chance that we end up allocating the exact same block of memory as the 
 previous execution, and that the results are already there. This happened to us
-at least once, and it can be fixed by 0-initializing the result array, prior to
+at least once, and it can be fixed by 0-initializing the result array prior to
 the calculation.
 
 
@@ -212,13 +212,13 @@ Speedup                         & 11.11      & 18.02      & 20.52        \\ \hli
 
 \subsection{Conclusion}
 \todo{S V T}
-When using OpenMP, we utilize the machines 16 cores with hyperthreading. 
+When using OpenMP, we utilize the machine's 16 cores with hyperthreading. 
 This will give us a maximum realistic speedup of factor 32. When running the small 
 dataset, the OpenMP pragma we used will only create 16 processes on 16 cores
 corresponding to the number of iterations on the outer loop. This means that 
-we will only get a max speedup of factor 16, on the small dataset. 
+we will only get a max speedup of factor 16 on the small dataset. 
 
-While using 16 cores, we expect a speedup of slight amount short of 16. Then we 
+When using 16 cores, we expect a speedup of slightly less than 16. Then we 
 gain a little extra from hyperthreading, if we have more than 16 processes. 
 Finally we loose a little as overhead from creating and sharing result memory.
 This makes the results very much in line with our expectations.
@@ -231,6 +231,10 @@ implementation to run on the GPU. Then we will reason about the validity of
 our implementation, and finally we will compare it to the original 
 implementation and the OpenMP implementation.
 
+\subsection{Angle of Approach}
+\todo{S V T, we need to explain why we only parallelize across O and Y}
+// Prøv og se om \autoref{sec:approach} besvarer dette.
+
 \subsection{Transformations}
 \todo{S V T}
 We did various transpormations on the original code. Here we explain what we 
@@ -238,9 +242,10 @@ did in approximately chronological order.
 
 \subsubsection{Array Expansion}
 \todo{S V T}
-The outer loop is not parallel. Previously we remedied this by privatization,
-but this approach will not work here, since we aim to use the GPU, and will 
-need to keep the struct available across multiple CUDA kernels. Therefore we
+The outer loop is not parallel as it is. Previously we remedied this by privatization,
+but this approach will not work here, since we aim to use the GPU where
+it is preferable to do all memory allocation before launching the CUDA-kernels.
+In addition, we need to keep variables available across multiple kernels. Therefore we
 expand most of the arrays in the struct with O copies, where O corresponds to
 the number of iterations in the outer loop. The arrays we have expanded are:
 myResult, myVarX, myVarY, u, v, a, b, c, y and yy. Those we chosen because 
@@ -251,17 +256,46 @@ After the array expansion,
 it was necessary to ensure that each iteration used its own part of the newly
 expanded array. This is done by indexing into the expanded arrays, based on the
 iteration counter, for each iteration. When the indexing into the expanded
-array is correct, then we have successfully made the outer loop fully parallel.
-
-
-\subsubsection{Loop Interchange}
-\todo{S V T}
-switching outer and timeline loops
+array is correct, then we have successfully made the outer-loop parallel.
 
 \subsubsection{Loop Distribution}
 \todo{S V T}
-how we can run all iterations of parts of a parallel loop at the same time
+When we have established that a loop is parallel, we can make use of the theorem which says that a parallel loop can be distributed across its statements.
+So if we have a parallel loop containing statements A, B and C, we can transform this into three separate loops ---
+one that loops over A, a second one that loops over B, and a third one that loops over C.
+The only condition is that we must remember to array-expand all private variables that span two or more of the newly created loops (otherwise, each iteration of one loop would just overwrite the variable such that only the value from the last thread to finish would be available in the next loop, which is obviously not what we want).
 
+At this point, we have a parallel outer-loop that has some initialization statements (initGrid and initOperator), and then a sequential loop (the timeline-loop).
+So we distribute the outer-loop, giving us one outer-loop containing the initialization statements, and another outer-loop containing just the timeline-loop.
+After distributing, we can continue the transformations on both new copies of the outer-loop.
+
+% how we can run all iterations of parts of a parallel loop at the same time
+
+\subsubsection{Loop Interchange}
+\todo{S V T}
+At this point in our sequence of transformations, in addition to an initialization loop, the program consists of the parallel outer-loop with the sequential timeline-loop inside of it.
+Now we can make use of the fact that a parallel loop can be interchanged inwards.
+So we do a loop interchange, such that the sequential timeline-loop now becomes the outermost loop.
+Now we have the parallel outer-loop on the inside of the sequential loop (note that we still call it the ``outer''-loop), and then we can continue applying loop distribution and loop interchange until our program has the desired structure.
+As previously mentioned, we want to end up with perfect loop-nests that correspond to CUDA-kernels.
+
+\subsubsection{Approach to Parallelization}
+\label{sec:approach}
+Actually, the goal isn't necessarily to end up with loop-nests \emph{per se}. So to put it more precise, we want parallel loops with enough iterations (i.e., threads) to fully utilize the GPU.
+So single loops are also perfectly fine, as long as their sizes are large enough.
+In our datasets, however, no single dimension is large enough to fully occupy the GPU, so we do need to create loop-nests in order to obtain sufficiently large loops.
+
+Currently, we have only optimized our program towards the large dataset.
+After performing the transformations mentioned above, in much of the code we end up with triple-nested loops: An outer-loop, an x-loop and a y-loop. Since each of these loops is parallel, such nests might be interchanged in any way we want. For the large dataset, it is sufficient to parallelize along two of the three dimensions. Two loops are large enough to fully utilize the GPU, and further parallelization would not increase the amount of work done in parallel (/* Måske nogle beregninger her? Og ville det forværre performance (mere overhead) at parallelisere mere? */). This is something we have only reasoned about with pen and paper calculations --- we didn't do any experiment parallelizing the third dimension to see what the actual impact was.
+
+As a consequence, we have only made two-dimensional kernels at this point. We have chosen to parallelize along the outer and y dimensions where possible. Some places in the code, the transformations only gave doubly-nested loops, and if those consisted of an outer-loop and an x-loop, then naturally we parallelize along the outer and x dimensions instead.
+
+// Esben, kan du uddybe f.eks. hvor meget der skal til for at fylde GPU'en?
+
+%This allows us to move the outer loop 
+%inwards, such that the parallel loops are in close proximity to each other. 
+%Later, this will allow us to easily create kernels, since this activity is 
+%trivial when the loops are in close proximity.
 
 \subsubsection{Coalesced Data Access}
 After having parallelized the execution, the data accesses were a major bottleneck because the they were not coalesced.
@@ -300,20 +334,27 @@ indexing into arrays, dont do it like Cosmin wants us to.
 
 \subsection{Validation}
 \todo{S V T}
+This implementation validates against all 3 datasets. This shows that our
+implementation is not catastrophically wrong, but does not prove that it is
+correct. However, we make the same assumption about correctness as with the 
+original implementation and the OpenMP implementation: The fact that it 
+validates is sufficient evidence of correctness.
 
 \subsection{Speedup}
 \todo{S V T}
+
+
 \begin{table}[h]
 \centering
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{|l|r|r|r|}
 \hline
 Speedup \textbackslash\ Dataset & Small      & Medium     & Large        \\ \hline
-
 Original                        & 2050766 us & 4240619 us & 187729378 us \\ \hline
 OpenMP                          & 184573 us  & 235295 us  & 9150758 us   \\ \hline
-CUDA                            &  us  &  us  &  us   \\ \hline
-Speedup                         & 11.11      & 18.02      & 20.52        \\ \hline
+CUDA                            & 124677 us  & 155702 us  & 1789467 us   \\ \hline
+Speedup Original / CUDA         & 16.45      & 27.23      & \textcolor{ugreen}{\textbf{104.91}}       \\ \hline
+Speedup OpenMP / CUDA           & 1.48       & 1.51       & 5.1          \\ \hline
 \end{tabular}
 }
 \caption{Speedup comparison of the original implementation, the OpenMP implementation and the CUDA implementation}
@@ -322,6 +363,10 @@ Speedup                         & 11.11      & 18.02      & 20.52        \\ \hli
 
 \subsection{Conclusion}
 \todo{S V T}
+
+\subsection{Remaining work}
+\todo{S V T, small and medium datasets, optimizing for those, constant memory}
+
 
 \newpage
 \section{Appendices}

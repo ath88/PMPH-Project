@@ -1,7 +1,10 @@
-To compile and run:
-    $ make clean; make; make run_small
-                                _medium
-                                _large
+To compile and run, go to one of the *Impl folder and type
+"make run_{large,medium,small}".
+
+In addition to OrigImpl as described below, these folders contain different versions of the implementation:
+    -- TimedImpl: Same as the original implementation, but with profiling added.
+    -- OpenMPImpl: Optimized with OpenMP.
+    -- CUDAImpl: Optimized with CUDA.
 
 Folder `OrigImpl' contains the original implementation:
     -- `ProjectMain.cpp'   contains the main function
